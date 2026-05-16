@@ -70,7 +70,7 @@ def extract_role(current_user: dict) -> str:
 
 
 # ── Admin-only guard ──────────────────────────────────────────────────────────
-async def require_admin(
+async def admin_required(
     current_user: dict = Depends(get_current_user),
 ) -> dict:
     """

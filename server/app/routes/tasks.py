@@ -21,6 +21,7 @@ from typing import Optional
 
 from app.database.mongodb import get_db
 from app.models.schemas import TaskCreate, TaskUpdate
+from app.middleware.auth import get_current_user
 from app.utils.permissions import (
     authenticated_required,
     admin_required,

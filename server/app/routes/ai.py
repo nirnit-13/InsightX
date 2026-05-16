@@ -3,7 +3,7 @@ import httpx
 import json
 from fastapi import APIRouter, Depends, HTTPException
 from app.models.schemas import AIInsightRequest, AIReportRequest
-from app.utils.auth import get_current_user
+from app.middleware.auth import get_current_user
 
 router = APIRouter()
 

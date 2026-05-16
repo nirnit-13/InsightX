@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from app.database.mongodb import get_db
-from app.middleware.auth import get_current_user, require_admin
+from app.middleware.auth import get_current_user, admin_required
 from app.services.groq_service import (
     generate_weekly_report,
     generate_productivity_summary,
@@ -90,7 +90,7 @@ async def _fetch_analytics_snapshot(db) -> dict:
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.get("/overview")
-async def get_reports_overview(admin=Depends(require_admin)):
+async def get_reports_overview(admin=Depends(admin_required)):
     """Return a summary of available report types and the latest snapshot."""
     db = get_db()
     snapshot = await _fetch_analytics_snapshot(db)
@@ -108,7 +108,7 @@ async def get_reports_overview(admin=Depends(require_admin)):
 @router.post("/generate")
 async def generate_report(
     payload: dict,
-    admin=Depends(require_admin),
+    admin=Depends(admin_required),
 ):
     """
     Generate an AI-powered analytics report using Groq.
@@ -147,7 +147,7 @@ async def generate_report(
 @router.post("/contributor-summary/{contributor_id}")
 async def generate_contributor_report(
     contributor_id: str,
-    admin=Depends(require_admin),
+    admin=Depends(admin_required),
 ):
     """Generate an AI-powered summary for a specific contributor."""
     from bson import ObjectId
@@ -199,7 +199,7 @@ async def generate_contributor_report(
 # ── CSV Export ────────────────────────────────────────────────────────────────
 
 @router.get("/export/csv/contributors")
-async def export_contributors_csv(admin=Depends(require_admin)):
+async def export_contributors_csv(admin=Depends(admin_required)):
     """Export all contributors as a CSV file."""
     db = get_db()
     contributors = await db.users.find({}, {"password": 0}).to_list(length=500)
@@ -222,7 +222,7 @@ async def export_contributors_csv(admin=Depends(require_admin)):
 
 
 @router.get("/export/csv/tasks")
-async def export_tasks_csv(admin=Depends(require_admin)):
+async def export_tasks_csv(admin=Depends(admin_required)):
     """Export all tasks as a CSV file."""
     db = get_db()
     tasks = await db.tasks.find({}).to_list(length=1000)
@@ -245,7 +245,7 @@ async def export_tasks_csv(admin=Depends(require_admin)):
 
 
 @router.get("/export/csv/analytics")
-async def export_analytics_csv(admin=Depends(require_admin)):
+async def export_analytics_csv(admin=Depends(admin_required)):
     """Export analytics overview as a CSV file."""
     db = get_db()
     snapshot = await _fetch_analytics_snapshot(db)
@@ -274,7 +274,7 @@ async def export_analytics_csv(admin=Depends(require_admin)):
 @router.post("/export/pdf")
 async def export_report_pdf(
     payload: dict,
-    admin=Depends(require_admin),
+    admin=Depends(admin_required),
 ):
     """
     Generate a PDF from an AI report using ReportLab.

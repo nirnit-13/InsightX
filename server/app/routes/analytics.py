@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from bson import ObjectId
 
 from app.database.mongodb import get_db
+from app.middleware.auth import get_current_user
 from app.utils.permissions import (
     authenticated_required,
     admin_required,

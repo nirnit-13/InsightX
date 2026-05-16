@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from app.database.mongodb import get_db
 from app.models.schemas import ContributorCreate, ContributorUpdate, ContributorOut
-from app.utils.auth import get_current_user, require_admin
+from app.middleware.auth import get_current_user
+from app.utils.permissions import admin_required
 from bson import ObjectId
 from typing import List
 
@@ -30,7 +31,7 @@ async def get_contributor(contributor_id: str, current_user=Depends(get_current_
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_contributor(payload: ContributorCreate, admin=Depends(require_admin)):
+async def create_contributor(payload: ContributorCreate, admin=Depends(admin_required)):
     db = get_db()
     if await db.users.find_one({"email": payload.email}):
         raise HTTPException(status_code=400, detail="Email already exists")
@@ -50,7 +51,7 @@ async def create_contributor(payload: ContributorCreate, admin=Depends(require_a
 
 
 @router.put("/{contributor_id}")
-async def update_contributor(contributor_id: str, payload: ContributorUpdate, admin=Depends(require_admin)):
+async def update_contributor(contributor_id: str, payload: ContributorUpdate, admin=Depends(admin_required)):
     db = get_db()
     update_data = {k: v for k, v in payload.dict().items() if v is not None}
     if not update_data:
@@ -68,7 +69,7 @@ async def update_contributor(contributor_id: str, payload: ContributorUpdate, ad
 
 
 @router.delete("/{contributor_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_contributor(contributor_id: str, admin=Depends(require_admin)):
+async def delete_contributor(contributor_id: str, admin=Depends(admin_required)):
     db = get_db()
     result = await db.users.delete_one({"_id": ObjectId(contributor_id)})
     if result.deleted_count == 0:
