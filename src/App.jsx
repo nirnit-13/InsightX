@@ -1,3 +1,11 @@
+/**
+ * src/App.jsx
+ *
+ * FIX: No /analytics route — Analytics.jsx has been intentionally removed.
+ *      Dashboard.jsx is the ONLY analytics hub.
+ *      All stale references to /analytics cleaned up.
+ */
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import RoleProtectedRoute from './components/auth/RoleProtectedRoute'
@@ -13,7 +21,7 @@ import Leaderboard  from './pages/Leaderboard'
 import Reports      from './pages/Reports'
 import Profile      from './pages/Profile'
 
-// Layout — uses centralized Sidebar component
+// Layout
 import AppLayout from './components/layout/AppLayout'
 
 // ── Auth guards ───────────────────────────────────────────────────────────────
@@ -22,7 +30,7 @@ function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-ix-bg flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-ix-accent border-t-transparent rounded-full animate-spin" />
           <p className="text-ix-muted text-sm font-body">Loading InsightX...</p>
@@ -52,7 +60,7 @@ export default function App() {
         <Route path="/login"  element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
 
-        {/* Protected dashboard shell — AppLayout uses centralized Sidebar */}
+        {/* Protected dashboard shell */}
         <Route
           path="/"
           element={
@@ -76,7 +84,6 @@ export default function App() {
               </RoleProtectedRoute>
             }
           />
-          
           <Route
             path="reports"
             element={
@@ -85,6 +92,13 @@ export default function App() {
               </RoleProtectedRoute>
             }
           />
+
+          {/*
+           * FIX: /analytics route intentionally NOT defined.
+           * Analytics.jsx has been removed. Dashboard.jsx is the analytics hub.
+           * Any stale /analytics link redirects to dashboard.
+           */}
+          <Route path="analytics" element={<Navigate to="/dashboard" replace />} />
         </Route>
 
         {/* Fallback */}

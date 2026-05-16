@@ -2,6 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * FIX — Theme system:
+ * The root cause of "theme toggle changes state but UI doesn't switch" was
+ * that body had a hardcoded `background-color: #050810` which always
+ * forced dark regardless of the .dark / .light class on <html>.
+ *
+ * Solution:
+ *   1. CSS variables defined separately for .dark and .light on :root
+ *   2. body uses var() instead of hardcoded hex values
+ *   3. .glass, .card, .input etc also use var() so they respond to theme
+ *   4. Tailwind darkMode: 'class' in tailwind.config.js handles the rest
+ */
+
+/* ── CSS custom properties — Dark (default) ── */
+:root,
+html.dark {
+  --bg:          #050810;
+  --surface:     #0d1117;
+  --card:        #111827;
+  --border:      rgba(255, 255, 255, 0.06);
+  --border-solid: #1f2937;
+  --text:        #f1f5f9;
+  --text-muted:  #64748b;
+  --glass-bg:    rgba(17, 24, 39, 0.6);
+  --glass-light-bg: rgba(255, 255, 255, 0.03);
+  --input-bg:    #0d1117;
+  --scrollbar-track: #0d1117;
+  --scrollbar-thumb: #1f2937;
+  --scrollbar-thumb-hover: #374151;
+}
+
+/* ── CSS custom properties — Light ── */
+html.light {
+  --bg:          #f8fafc;
+  --surface:     #ffffff;
+  --card:        #ffffff;
+  --border:      rgba(0, 0, 0, 0.08);
+  --border-solid: #e2e8f0;
+  --text:        #0f172a;
+  --text-muted:  #64748b;
+  --glass-bg:    rgba(255, 255, 255, 0.8);
+  --glass-light-bg: rgba(0, 0, 0, 0.02);
+  --input-bg:    #f1f5f9;
+  --scrollbar-track: #f1f5f9;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -13,13 +61,16 @@
     scroll-behavior: smooth;
   }
 
+  /* FIX: body uses CSS vars so theme switching works instantly */
   body {
-    background-color: #050810;
-    color: #f1f5f9;
+    background-color: var(--bg);
+    color: var(--text);
     font-family: 'DM Sans', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    /* smooth transition on theme change */
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   ::-webkit-scrollbar {
@@ -27,35 +78,36 @@
     height: 4px;
   }
   ::-webkit-scrollbar-track {
-    background: #0d1117;
+    background: var(--scrollbar-track);
   }
   ::-webkit-scrollbar-thumb {
-    background: #1f2937;
+    background: var(--scrollbar-thumb);
     border-radius: 99px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #374151;
+    background: var(--scrollbar-thumb-hover);
   }
 
   ::selection {
     background: rgba(99, 102, 241, 0.3);
-    color: #f1f5f9;
+    color: var(--text);
   }
 }
 
 @layer components {
+  /* FIX: glass uses var(--glass-bg) so it responds to theme */
   .glass {
-    background: rgba(17, 24, 39, 0.6);
+    background: var(--glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
   }
 
   .glass-light {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--glass-light-bg);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
   }
 
   .text-gradient {
@@ -89,13 +141,23 @@
            hover:border-ix-accent hover:text-ix-text hover:bg-ix-accent/10;
   }
 
+  /* FIX: card uses var(--glass-bg) and var(--border) */
   .card {
-    @apply glass rounded-2xl p-6 transition-all duration-300 
-           hover:shadow-card-hover hover:border-ix-accent/20;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    @apply rounded-2xl p-6 transition-all duration-300 
+           hover:shadow-card-hover;
   }
 
+  /* FIX: stat-card same */
   .stat-card {
-    @apply glass rounded-2xl p-5 relative overflow-hidden transition-all duration-300 
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    @apply rounded-2xl p-5 relative overflow-hidden transition-all duration-300 
            hover:shadow-card-hover hover:scale-[1.02];
   }
 
@@ -108,8 +170,12 @@
     @apply text-ix-text bg-ix-accent/15 border border-ix-accent/20;
   }
 
+  /* FIX: input uses var(--input-bg) */
   .input {
-    @apply w-full bg-ix-surface border border-ix-border rounded-xl px-4 py-3 
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--border-solid);
+    @apply rounded-xl px-4 py-3 
            text-ix-text placeholder-ix-muted font-body text-sm 
            focus:outline-none focus:border-ix-accent/50 focus:ring-2 focus:ring-ix-accent/10 
            transition-all duration-200;
@@ -121,6 +187,13 @@
 
   .shimmer-bg {
     background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Light mode shimmer */
+  html.light .shimmer-bg {
+    background: linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.07) 50%, rgba(0,0,0,0.03) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
   }
@@ -153,9 +226,20 @@
   backdrop-filter: blur(12px) !important;
 }
 
+html.light .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  color: #0f172a !important;
+}
+
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
   stroke: rgba(255, 255, 255, 0.04) !important;
+}
+
+html.light .recharts-cartesian-grid-horizontal line,
+html.light .recharts-cartesian-grid-vertical line {
+  stroke: rgba(0, 0, 0, 0.06) !important;
 }
 
 .recharts-text {

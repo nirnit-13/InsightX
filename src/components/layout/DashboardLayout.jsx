@@ -1,16 +1,19 @@
 /**
- * src/layouts/DashboardLayout.jsx
- * Thin layout wrapper that uses the centralized <Sidebar> component.
- * Used as an alternative/canonical layout export — App.jsx continues to
- * use AppLayout which also integrates Sidebar.
+ * src/components/layout/DashboardLayout.jsx
+ *
+ * FIX: Corrected all import paths — this file lives in src/components/layout/
+ *      so context and component imports need ../../ prefix, not ../.
+ *
+ * This is a thin layout wrapper used as an alternative canonical layout.
+ * App.jsx uses AppLayout (same folder), which already had correct paths.
  */
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '../context/AuthContext'
-import Sidebar from '../components/sidebar/Sidebar'
-import NotificationsPanel from '../components/notifications/NotificationsPanel'
-import ThemeToggle from '../components/ui/ThemeToggle'
+import { useAuth } from '../../context/AuthContext'
+import Sidebar from '../sidebar/Sidebar'
+import NotificationsPanel from '../notifications/NotificationsPanel'
+import ThemeToggle from '../ui/ThemeToggle'
 import { RiMenuLine, RiCloseLine, RiSearchLine } from 'react-icons/ri'
 
 function UserAvatar({ user, size = 'sm' }) {

@@ -6,15 +6,15 @@
  *   ADMIN dashboard calls:
  *     /analytics/overview   → useAnalyticsOverview()
  *     /analytics/leaderboard → useLeaderboard()
- *     (charts stay as mock/fallback data for now)
  *
  *   CONTRIBUTOR dashboard calls ONLY:
- *     /analytics/me         → useMyStats()        (personal analytics)
+ *     /analytics/me         → useMyStats()
  *     /tasks/my             → useTasks() → getMyTasks()
- *     /analytics/leaderboard → useLeaderboard()   (shared)
+ *     /analytics/leaderboard → useLeaderboard()
  *
- *   Contributors NEVER call /analytics/overview or org-level /analytics/charts.
- *   This eliminates all 403 errors on the contributor dashboard.
+ *   FIX: Removed stale Link to="/analytics" (Analytics.jsx removed).
+ *   FIX: All queries use role-gated `enabled` flags so hidden widgets
+ *        never fire API calls.
  */
 
 import { motion } from 'framer-motion'
@@ -38,7 +38,7 @@ import {
   RiFireLine, RiCalendarLine, RiCheckboxCircleLine, RiTimeLine, RiStarLine,
 } from 'react-icons/ri'
 
-// Fallback chart data (used when API is unavailable or for static charts)
+// Fallback chart data
 const weeklyFallback = WEEKLY_ACTIVITY.map(d => ({
   name: d.day, Commits: d.commits, Tasks: d.tasks, Reviews: d.reviews,
 }))
@@ -69,7 +69,7 @@ function AdminDashboard() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
+      {/* Header — FIX: removed stale Link to="/analytics" */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display font-bold text-2xl lg:text-3xl text-ix-text">
@@ -79,9 +79,9 @@ function AdminDashboard() {
             <RiCalendarLine className="text-ix-accent" /> {now}
           </p>
         </div>
+        {/* FIX: Removed Link to="/analytics" — Analytics page no longer exists */}
         <div className="flex gap-2">
-          <Link to="/analytics" className="btn-ghost text-sm px-4 py-2.5">Analytics</Link>
-          <Link to="/reports"   className="btn-primary text-sm px-5 py-2.5">Generate AI Report</Link>
+          <Link to="/reports" className="btn-primary text-sm px-5 py-2.5">Generate AI Report</Link>
         </div>
       </div>
 
@@ -219,26 +219,25 @@ function AdminDashboard() {
 // Does NOT call /analytics/overview or org-level /analytics/charts.
 // ══════════════════════════════════════════════════════════════════════════════
 function ContributorDashboard() {
-  const { user }                          = useAuth()
-  const { data: myStats, isLoading: sl }  = useMyStats()          // → /analytics/me
-  const { data: tasksData, isLoading: tl } = useTasks()           // → /tasks/my
-  const { data: board }                   = useLeaderboard()       // → /analytics/leaderboard (shared)
+  const { user }                           = useAuth()
+  const { data: myStats, isLoading: sl }   = useMyStats()
+  const { data: tasksData, isLoading: tl } = useTasks()
+  const { data: board }                    = useLeaderboard()
 
-  const tasks   = Array.isArray(tasksData) ? tasksData : []
-  const done    = tasks.filter(t => t.status === 'completed').length
-  const inProg  = tasks.filter(t => t.status === 'in-progress').length
-  const pend    = tasks.filter(t => t.status === 'pending').length
+  const tasks  = Array.isArray(tasksData) ? tasksData : []
+  const done   = tasks.filter(t => t.status === 'completed').length
+  const inProg = tasks.filter(t => t.status === 'in-progress').length
+  const pend   = tasks.filter(t => t.status === 'pending').length
 
   if (sl) return <DashboardSkeleton />
 
   const personalContext = {
-    user_score:  myStats?.productivity_score ?? user?.productivity_score,
-    streak:      myStats?.streak             ?? user?.streak,
-    tasks_done:  myStats?.completed_tasks    ?? done,
-    attendance:  myStats?.attendance         ?? user?.attendance,
+    user_score: myStats?.productivity_score ?? user?.productivity_score,
+    streak:     myStats?.streak             ?? user?.streak,
+    tasks_done: myStats?.completed_tasks    ?? done,
+    attendance: myStats?.attendance         ?? user?.attendance,
   }
 
-  // My rank on the leaderboard
   const myRank = board
     ? board.findIndex(c => c.email === user?.email) + 1
     : 0
@@ -253,7 +252,7 @@ function ContributorDashboard() {
         <p className="text-ix-muted text-sm mt-1">Your personal performance dashboard</p>
       </div>
 
-      {/* Personal KPIs — sourced from /analytics/me */}
+      {/* Personal KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Productivity Score"
@@ -283,12 +282,12 @@ function ContributorDashboard() {
         />
       </div>
 
-      {/* Task breakdown — sourced from /tasks/my */}
+      {/* Task breakdown */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Completed',   value: myStats?.completed_tasks    ?? done,   color: '#10b981', icon: RiCheckboxCircleLine },
-          { label: 'In Progress', value: myStats?.in_progress_tasks  ?? inProg, color: '#06b6d4', icon: RiTimeLine },
-          { label: 'Pending',     value: myStats?.pending_tasks      ?? pend,   color: '#f59e0b', icon: RiTaskLine },
+          { label: 'Completed',   value: myStats?.completed_tasks   ?? done,   color: '#10b981', icon: RiCheckboxCircleLine },
+          { label: 'In Progress', value: myStats?.in_progress_tasks ?? inProg, color: '#06b6d4', icon: RiTimeLine },
+          { label: 'Pending',     value: myStats?.pending_tasks     ?? pend,   color: '#f59e0b', icon: RiTaskLine },
         ].map(s => (
           <div key={s.label} className="card text-center">
             <s.icon className="text-2xl mx-auto mb-2" style={{ color: s.color }} />
@@ -315,7 +314,7 @@ function ContributorDashboard() {
         </div>
       )}
 
-      {/* My active tasks — sourced from /tasks/my */}
+      {/* My active tasks */}
       <div className="card">
         <SectionHeader
           title="My Active Tasks"
@@ -353,7 +352,7 @@ function ContributorDashboard() {
         )}
       </div>
 
-      {/* Leaderboard rank — sourced from /analytics/leaderboard (shared endpoint) */}
+      {/* Leaderboard rank */}
       {myRank > 0 && (
         <div className="card flex items-center gap-4">
           <div className="text-3xl">
@@ -392,14 +391,5 @@ function ContributorDashboard() {
 // ── Entry point ───────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { isAdmin } = useAuth()
-
-  /**
-   * FIX: The role check here is the final guard that ensures:
-   *   - Admins see AdminDashboard (which calls admin endpoints)
-   *   - Contributors see ContributorDashboard (which only calls contributor endpoints)
-   *
-   * Because isAdmin is derived from user.role (set at login and persisted to
-   * localStorage), this is stable across page refreshes.
-   */
   return isAdmin ? <AdminDashboard /> : <ContributorDashboard />
 }
