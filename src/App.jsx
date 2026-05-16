@@ -12,7 +12,6 @@ import Tasks        from './pages/Tasks'
 import Leaderboard  from './pages/Leaderboard'
 import Reports      from './pages/Reports'
 import Profile      from './pages/Profile'
-import Analytics    from './pages/Analytics'
 
 // Layout — uses centralized Sidebar component
 import AppLayout from './components/layout/AppLayout'
@@ -77,14 +76,7 @@ export default function App() {
               </RoleProtectedRoute>
             }
           />
-          <Route
-            path="analytics"
-            element={
-              <RoleProtectedRoute allowedRoles={['admin']}>
-                <Analytics />
-              </RoleProtectedRoute>
-            }
-          />
+          
           <Route
             path="reports"
             element={

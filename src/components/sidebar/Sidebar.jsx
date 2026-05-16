@@ -42,7 +42,6 @@ const ADMIN_NAV = [
   { to: '/dashboard',    icon: RiDashboardLine,  label: 'Dashboard',    badge: null },
   { to: '/contributors', icon: RiTeamLine,        label: 'Contributors', badge: null },
   { to: '/tasks',        icon: RiTaskLine,        label: 'Tasks',        badge: null },
-  { to: '/analytics',    icon: RiBarChartBoxLine, label: 'Analytics',    badge: null },
   { to: '/leaderboard',  icon: RiTrophyLine,      label: 'Leaderboard',  badge: null },
   { to: '/reports',      icon: RiFileChartLine,   label: 'AI Reports',   badge: 'AI' },
   { to: '/profile',      icon: RiUserLine,        label: 'Profile',      badge: null },
