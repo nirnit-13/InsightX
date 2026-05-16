@@ -19,14 +19,23 @@ import {
   RiFireLine, RiCalendarLine, RiCheckboxCircleLine, RiTimeLine, RiStarLine,
 } from 'react-icons/ri'
 
-const weeklyFallback = WEEKLY_ACTIVITY.map(d => ({ name: d.day, Commits: d.commits, Tasks: d.tasks, Reviews: d.reviews }))
-const engageFallback = ENGAGEMENT_TREND.map(d => ({ name: d.week, Engagement: d.engagement, Retention: d.retention }))
+// ── Fallback chart data (used when API is not available) ──────────────────────
+const weeklyFallback = WEEKLY_ACTIVITY.map(d => ({
+  name: d.day, Commits: d.commits, Tasks: d.tasks, Reviews: d.reviews,
+}))
+const engageFallback = ENGAGEMENT_TREND.map(d => ({
+  name: d.week, Engagement: d.engagement, Retention: d.retention,
+}))
 
-/* ══════ ADMIN DASHBOARD ══════ */
+// ══════════════════════════════════════════════════════════════════════════════
+// ADMIN DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════════
 function AdminDashboard() {
   const { data: stats, isLoading: sl } = useAnalyticsOverview()
   const { data: board, isLoading: bl } = useLeaderboard()
-  const now = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const now = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  })
 
   if (sl) return <DashboardSkeleton />
 
@@ -39,6 +48,7 @@ function AdminDashboard() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display font-bold text-2xl lg:text-3xl text-ix-text">
@@ -50,11 +60,11 @@ function AdminDashboard() {
         </div>
         <div className="flex gap-2">
           <Link to="/analytics" className="btn-ghost text-sm px-4 py-2.5">Analytics</Link>
-          <Link to="/reports" className="btn-primary text-sm px-5 py-2.5">Generate AI Report</Link>
+          <Link to="/reports"   className="btn-primary text-sm px-5 py-2.5">Generate AI Report</Link>
         </div>
       </div>
 
-      {/* KPI stats */}
+      {/* KPI stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Contributors"  value={stats?.total_contributors  ?? 0} delta={8}  icon={RiTeamLine}        color="#6366f1" />
         <StatCard label="Task Completion"     value={stats?.task_completion_rate ?? 0} delta={5}  icon={RiTaskLine}        color="#10b981" suffix="%" />
@@ -65,13 +75,16 @@ function AdminDashboard() {
       {/* Progress metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Active Users',   value: stats?.active_users    ?? 0, max: stats?.total_contributors ?? 10, color: '#6366f1' },
-          { label: 'Avg Attendance', value: stats?.attendance_avg  ?? 0, max: 100,                             color: '#10b981', suffix: '%' },
-          { label: 'In Progress',    value: stats?.in_progress_tasks ?? 0, max: stats?.total_tasks ?? 10,      color: '#06b6d4' },
-          { label: 'Pending Tasks',  value: stats?.pending_tasks   ?? 0, max: stats?.total_tasks ?? 10,        color: '#f59e0b' },
+          { label: 'Active Users',   value: stats?.active_users      ?? 0, max: stats?.total_contributors ?? 10, color: '#6366f1' },
+          { label: 'Avg Attendance', value: stats?.attendance_avg    ?? 0, max: 100,                             color: '#10b981', suffix: '%' },
+          { label: 'In Progress',    value: stats?.in_progress_tasks ?? 0, max: stats?.total_tasks ?? 10,        color: '#06b6d4' },
+          { label: 'Pending Tasks',  value: stats?.pending_tasks     ?? 0, max: stats?.total_tasks ?? 10,        color: '#f59e0b' },
         ].map((s, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-            className="card">
+          <motion.div key={i}
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="card"
+          >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-ix-muted">{s.label}</span>
               <span className="text-sm font-display font-bold text-ix-text">{s.value}{s.suffix}</span>
@@ -85,9 +98,15 @@ function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 card">
           <SectionHeader title="Weekly Activity" subtitle="Commits, tasks & reviews" />
-          <ActivityBarChart data={weeklyFallback}
-            bars={[{ key: 'Commits', color: '#6366f1' }, { key: 'Tasks', color: '#06b6d4' }, { key: 'Reviews', color: '#10b981' }]}
-            height={210} />
+          <ActivityBarChart
+            data={weeklyFallback}
+            bars={[
+              { key: 'Commits', color: '#6366f1' },
+              { key: 'Tasks',   color: '#06b6d4' },
+              { key: 'Reviews', color: '#10b981' },
+            ]}
+            height={210}
+          />
         </div>
         <div className="card">
           <SectionHeader title="Team Split" subtitle="By contribution area" />
@@ -110,8 +129,14 @@ function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
           <SectionHeader title="Engagement Trend" subtitle="6-week engagement & retention" />
-          <GradientAreaChart data={engageFallback}
-            lines={[{ key: 'Engagement', color: '#8b5cf6' }, { key: 'Retention', color: '#06b6d4' }]} height={180} />
+          <GradientAreaChart
+            data={engageFallback}
+            lines={[
+              { key: 'Engagement', color: '#8b5cf6' },
+              { key: 'Retention',  color: '#06b6d4' },
+            ]}
+            height={180}
+          />
         </div>
         <AIRecommendationsPanel context={adminContext} title="AI Insights" maxItems={3} />
       </div>
@@ -119,17 +144,29 @@ function AdminDashboard() {
       {/* Leaderboard + Live feed */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
-          <SectionHeader title="Top Performers" subtitle="By productivity score"
-            action={<Link to="/leaderboard" className="text-xs text-ix-accent hover:text-ix-accent2">View all →</Link>} />
+          <SectionHeader
+            title="Top Performers"
+            subtitle="By productivity score"
+            action={<Link to="/leaderboard" className="text-xs text-ix-accent hover:text-ix-accent2">View all →</Link>}
+          />
           <div className="space-y-3">
-            {bl ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />) :
-              (board || []).slice(0, 5).map((c, i) => (
-                <motion.div key={c.id || i} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition-all">
+            {bl
+              ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)
+              : (board || []).slice(0, 5).map((c, i) => (
+                <motion.div key={c.id || i}
+                  initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.07 }}
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition-all"
+                >
                   <div className="w-6 text-center text-sm">
-                    {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span className="font-mono text-ix-muted text-xs">#{i + 1}</span>}
+                    {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉'
+                      : <span className="font-mono text-ix-muted text-xs">#{i + 1}</span>}
                   </div>
-                  <Avatar initials={c.avatar || c.name?.slice(0, 2).toUpperCase()} color={c.color || '#6366f1'} size="sm" />
+                  <Avatar
+                    initials={c.avatar || c.name?.slice(0, 2).toUpperCase()}
+                    color={c.color || '#6366f1'}
+                    size="sm"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-display font-semibold text-ix-text truncate">{c.name}</p>
                     <p className="text-xs text-ix-muted">{c.team}</p>
@@ -150,20 +187,36 @@ function AdminDashboard() {
   )
 }
 
-/* ══════ CONTRIBUTOR DASHBOARD ══════ */
+// ══════════════════════════════════════════════════════════════════════════════
+// CONTRIBUTOR DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════════
 function ContributorDashboard() {
   const { user } = useAuth()
   const { data: myStats, isLoading } = useMyStats()
   const { data: tasksData } = useTasks()
   const tasks  = Array.isArray(tasksData) ? tasksData : []
-  const done   = tasks.filter(t => t.status === 'completed').length
-  const inProg = tasks.filter(t => t.status === 'in-progress').length
-  const pend   = tasks.filter(t => t.status === 'pending').length
+
+  // Contributor only sees their own tasks
+  const myTasks = tasks.filter(t =>
+    t.assigned_to === user?.id || t.assigned_to === user?.sub
+  )
+
+  const done   = myTasks.filter(t => t.status === 'completed').length
+  const inProg = myTasks.filter(t => t.status === 'in-progress').length
+  const pend   = myTasks.filter(t => t.status === 'pending').length
 
   if (isLoading) return <DashboardSkeleton />
 
+  const personalContext = {
+    user_score:  user?.productivity_score,
+    streak:      user?.streak,
+    tasks_done:  done,
+    attendance:  user?.attendance,
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-8">
+      {/* Header */}
       <div>
         <h1 className="font-display font-bold text-2xl text-ix-text">
           Welcome back, <span className="text-gradient">{user?.name?.split(' ')[0]}</span> 👋
@@ -173,10 +226,10 @@ function ContributorDashboard() {
 
       {/* Personal KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Productivity Score" value={myStats?.productivity_score ?? user?.productivity_score ?? 75} icon={RiFlashlightLine} color="#6366f1" />
-        <StatCard label="Tasks Completed"    value={myStats?.completed_tasks   ?? done}    icon={RiCheckboxCircleLine} color="#10b981" />
-        <StatCard label="Current Streak"     value={myStats?.streak            ?? user?.streak ?? 0} suffix="d" icon={RiFireLine}   color="#f59e0b" />
-        <StatCard label="Attendance"         value={myStats?.attendance        ?? user?.attendance ?? 90} suffix="%" icon={RiStarLine} color="#8b5cf6" />
+        <StatCard label="Productivity Score" value={myStats?.productivity_score ?? user?.productivity_score ?? 75} icon={RiFlashlightLine}       color="#6366f1" />
+        <StatCard label="Tasks Completed"    value={myStats?.completed_tasks   ?? done}                            icon={RiCheckboxCircleLine}   color="#10b981" />
+        <StatCard label="Current Streak"     value={myStats?.streak            ?? user?.streak ?? 0}  suffix="d"  icon={RiFireLine}              color="#f59e0b" />
+        <StatCard label="Attendance"         value={myStats?.attendance        ?? user?.attendance ?? 90} suffix="%" icon={RiStarLine}           color="#8b5cf6" />
       </div>
 
       {/* Task breakdown */}
@@ -188,28 +241,35 @@ function ContributorDashboard() {
         ].map(s => (
           <div key={s.label} className="card text-center">
             <s.icon className="text-2xl mx-auto mb-2" style={{ color: s.color }} />
-            <p className="text-2xl font-display font-bold text-ix-text" style={{ color: s.color }}>{s.value}</p>
+            <p className="text-2xl font-display font-bold text-ix-text" style={{ color: s.color }}>
+              {s.value}
+            </p>
             <p className="text-xs text-ix-muted mt-1">{s.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Active tasks */}
+      {/* My active tasks */}
       <div className="card">
-        <SectionHeader title="My Active Tasks" subtitle="Tasks assigned to you"
-          action={<Link to="/tasks" className="text-xs text-ix-accent hover:text-ix-accent2">View all →</Link>} />
-        {tasks.length === 0 ? (
+        <SectionHeader
+          title="My Active Tasks"
+          subtitle="Tasks currently assigned to you"
+          action={<Link to="/tasks" className="text-xs text-ix-accent hover:text-ix-accent2">View all →</Link>}
+        />
+        {myTasks.length === 0 ? (
           <EmptyState icon="📋" title="No tasks yet" subtitle="Your assigned tasks will appear here" />
         ) : (
           <div className="space-y-2">
-            {tasks.filter(t => t.status !== 'completed').slice(0, 5).map(t => (
+            {myTasks.filter(t => t.status !== 'completed').slice(0, 5).map(t => (
               <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition-all">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-ix-text truncate">{t.title}</p>
                   <p className="text-xs text-ix-muted">Due: {t.deadline || 'No deadline'}</p>
                 </div>
                 <span className={`text-[10px] font-mono px-2 py-1 rounded-lg font-medium
-                  ${t.priority === 'high' ? 'text-red-500 bg-red-500/10' : t.priority === 'medium' ? 'text-amber-500 bg-amber-500/10' : 'text-cyan-500 bg-cyan-500/10'}`}>
+                  ${t.priority === 'high'   ? 'text-red-500 bg-red-500/10'
+                  : t.priority === 'medium' ? 'text-amber-500 bg-amber-500/10'
+                                            : 'text-cyan-500 bg-cyan-500/10'}`}>
                   {t.priority?.toUpperCase()}
                 </span>
               </div>
@@ -220,22 +280,25 @@ function ContributorDashboard() {
 
       {/* Productivity chart */}
       <div className="card">
-        <SectionHeader title="Productivity Trend" subtitle="Your 6-week activity overview" />
+        <SectionHeader title="Activity Trend" subtitle="6-week activity overview" />
         <GradientAreaChart
           data={engageFallback}
           lines={[{ key: 'Engagement', label: 'Activity Score', color: '#6366f1' }]}
-          height={180} />
+          height={180}
+        />
       </div>
 
       {/* Personal AI insights */}
       <AIRecommendationsPanel
-        context={{ user_score: user?.productivity_score, streak: user?.streak, tasks_done: done }}
+        context={personalContext}
         title="Your AI Insights"
-        maxItems={2} />
+        maxItems={2}
+      />
     </div>
   )
 }
 
+// ── Entry point ───────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { isAdmin } = useAuth()
   return isAdmin ? <AdminDashboard /> : <ContributorDashboard />
