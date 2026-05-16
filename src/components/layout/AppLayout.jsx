@@ -2,36 +2,49 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import NotificationsPanel from '../notifications/NotificationsPanel'
+import ThemeToggle from '../ui/ThemeToggle'
 import {
   RiDashboardLine, RiTeamLine, RiTaskLine, RiTrophyLine,
   RiFileChartLine, RiUserLine, RiMenuLine, RiCloseLine,
   RiLogoutBoxLine, RiFlashlightLine, RiSearchLine,
+  RiBarChartBoxLine,
 } from 'react-icons/ri'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const NAV_ITEMS = [
-  { to: '/dashboard',    icon: RiDashboardLine, label: 'Dashboard' },
-  { to: '/contributors', icon: RiTeamLine,      label: 'Contributors' },
-  { to: '/tasks',        icon: RiTaskLine,      label: 'Tasks' },
-  { to: '/leaderboard',  icon: RiTrophyLine,    label: 'Leaderboard' },
-  { to: '/reports',      icon: RiFileChartLine, label: 'AI Reports' },
-  { to: '/profile',      icon: RiUserLine,      label: 'Profile' },
+/* ── Role-aware nav items ── */
+const ADMIN_NAV = [
+  { to: '/dashboard',    icon: RiDashboardLine,  label: 'Dashboard' },
+  { to: '/contributors', icon: RiTeamLine,        label: 'Contributors' },
+  { to: '/tasks',        icon: RiTaskLine,        label: 'Tasks' },
+  { to: '/analytics',   icon: RiBarChartBoxLine,  label: 'Analytics' },
+  { to: '/leaderboard',  icon: RiTrophyLine,      label: 'Leaderboard' },
+  { to: '/reports',      icon: RiFileChartLine,   label: 'AI Reports' },
+  { to: '/profile',      icon: RiUserLine,        label: 'Profile' },
+]
+
+const CONTRIBUTOR_NAV = [
+  { to: '/dashboard',   icon: RiDashboardLine, label: 'My Dashboard' },
+  { to: '/tasks',       icon: RiTaskLine,      label: 'My Tasks' },
+  { to: '/leaderboard', icon: RiTrophyLine,    label: 'Leaderboard' },
+  { to: '/profile',     icon: RiUserLine,      label: 'Profile' },
 ]
 
 function UserAvatar({ user, size = 'md' }) {
   const sizes = { sm: 'w-7 h-7 text-xs', md: 'w-9 h-9 text-sm', lg: 'w-11 h-11 text-base' }
   return (
-    <div className={`${sizes[size]} rounded-xl flex items-center justify-center font-display font-bold text-white`}
-      style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+    <div
+      className={`${sizes[size]} rounded-xl flex items-center justify-center font-display font-bold text-white`}
+      style={{ background: `linear-gradient(135deg, ${user?.color || '#6366f1'}, #8b5cf6)` }}>
       {user?.avatar || user?.name?.slice(0, 2).toUpperCase()}
     </div>
   )
 }
 
 function Sidebar({ onClose }) {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
   const navigate = useNavigate()
   const handleLogout = () => { logout(); navigate('/') }
+  const navItems = isAdmin ? ADMIN_NAV : CONTRIBUTOR_NAV
 
   return (
     <div className="flex flex-col h-full p-5">
@@ -43,8 +56,10 @@ function Sidebar({ onClose }) {
       </div>
 
       <nav className="flex-1 flex flex-col gap-1">
-        <p className="text-[10px] font-mono text-ix-muted uppercase tracking-widest px-3 mb-2">Navigation</p>
-        {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+        <p className="text-[10px] font-mono text-ix-muted uppercase tracking-widest px-3 mb-2">
+          {isAdmin ? 'Admin Panel' : 'My Workspace'}
+        </p>
+        {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink key={to} to={to} onClick={onClose}
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <Icon className="text-lg flex-shrink-0" />
@@ -53,12 +68,22 @@ function Sidebar({ onClose }) {
         ))}
       </nav>
 
-      <div className="mt-4 p-3 glass rounded-xl border border-ix-border">
+      {/* Role badge */}
+      <div className="mb-3 px-3 py-1.5 glass rounded-lg border border-ix-border">
+        <p className="text-[10px] font-mono text-ix-muted">
+          Signed in as{' '}
+          <span className={`font-bold ${isAdmin ? 'text-ix-amber' : 'text-ix-cyan'}`}>
+            {user?.role?.toUpperCase()}
+          </span>
+        </p>
+      </div>
+
+      <div className="p-3 glass rounded-xl border border-ix-border">
         <div className="flex items-center gap-3">
           <UserAvatar user={user} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-display font-semibold text-ix-text truncate">{user?.name}</p>
-            <p className="text-[10px] font-mono text-ix-muted capitalize">{user?.role}</p>
+            <p className="text-[10px] font-mono text-ix-muted truncate">{user?.email}</p>
           </div>
           <button onClick={handleLogout}
             className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-ix-red/20 text-ix-muted hover:text-ix-red transition-all">
@@ -123,7 +148,7 @@ export default function AppLayout() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            {/* ← Notifications panel (replaces bare bell) */}
+            <ThemeToggle />
             <NotificationsPanel />
             <UserAvatar user={user} size="sm" />
           </div>

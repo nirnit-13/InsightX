@@ -3,13 +3,14 @@ import { Toaster } from 'react-hot-toast'
 import { ThemeProvider }         from '../context/ThemeContext'
 import { AuthProvider }          from '../context/AuthContext'
 import { NotificationsProvider } from '../context/NotificationsContext'
+import ErrorBoundary             from '../components/ErrorBoundary'
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime:    30_000,   // 30s
-      cacheTime:    300_000,  // 5min
-      retry:        1,
+      staleTime:           30_000,
+      gcTime:              300_000,
+      retry:               1,
       refetchOnWindowFocus: false,
     },
     mutations: {
@@ -24,7 +25,9 @@ export default function AppProviders({ children }) {
       <ThemeProvider>
         <AuthProvider>
           <NotificationsProvider>
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
             <Toaster
               position="top-right"
               toastOptions={{
