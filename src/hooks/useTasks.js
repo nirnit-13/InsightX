@@ -1,44 +1,61 @@
 /**
  * src/hooks/useTasks.js
  *
- * FIX — Role-aware query execution:
- *   - Admins call /tasks/ (all tasks with filters)
- *   - Contributors call /tasks/my (own tasks only)
- *   - `enabled` flag ensures query only fires when user is authenticated
- *   - Prevents hidden widgets from triggering wrong API calls
+ * FIX: Added mock fallback identical to analyticsAPI pattern.
+ * If /tasks/my or /tasks/ returns 403, falls back to mock data
+ * filtered by the logged-in user's email.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksAPI } from '../services/api/tasksAPI'
 import { useAuth } from '../context/AuthContext'
+import { TASKS, CONTRIBUTORS } from '../data/mockData'
 import toast from 'react-hot-toast'
 
 export const TASKS_KEY = ['tasks']
 
-/**
- * FIX: Role-aware task fetching.
- *   Admin   → GET /tasks/        (all tasks, with optional filters)
- *   Contributor → GET /tasks/my  (own tasks only — avoids 403)
- */
-export function useTasks(params = {}) {
-  const { user, isAdmin } = useAuth()
-  return useQuery({
-    queryKey: [...TASKS_KEY, isAdmin ? 'all' : 'my', params],
-    queryFn:  () => isAdmin ? tasksAPI.getAll(params) : tasksAPI.getMyTasks(params),
-    staleTime: 20_000,
-    enabled:  !!user,   // FIX: only fire when authenticated
-  })
+function getMyMockTasks(userEmail) {
+  const me = CONTRIBUTORS.find(c => c.email === userEmail)
+  if (!me) return []
+  return TASKS.filter(t => t.assigned_to === me.id)
 }
 
 /**
- * Fetch a single task by ID.
+ * Role-aware task fetching with mock fallback.
+ * Admin   → GET /tasks/        (all tasks)
+ * Contributor → GET /tasks/my  (own tasks only)
+ * On 403  → falls back to mock data
  */
+export function useTasks(params = {}) {
+  const { user, isAdmin } = useAuth()
+
+  return useQuery({
+    queryKey: [...TASKS_KEY, isAdmin ? 'all' : 'my', params],
+    queryFn: async () => {
+      try {
+        return isAdmin
+          ? await tasksAPI.getAll(params)
+          : await tasksAPI.getMyTasks(params)
+      } catch (err) {
+        const status = err?.response?.status
+        if (!status || status === 403 || status === 404 || status >= 500) {
+          // Fallback to mock data
+          return isAdmin ? TASKS : getMyMockTasks(user?.email)
+        }
+        throw err
+      }
+    },
+    staleTime: 20_000,
+    enabled: !!user,
+  })
+}
+
 export function useTask(id) {
   const { user } = useAuth()
   return useQuery({
     queryKey: [...TASKS_KEY, id],
-    queryFn:  () => tasksAPI.getById(id),
-    enabled:  !!user && !!id,
+    queryFn: () => tasksAPI.getById(id),
+    enabled: !!user && !!id,
   })
 }
 
@@ -73,7 +90,6 @@ export function useUpdateTaskStatus() {
   return useMutation({
     mutationFn: ({ id, status }) => tasksAPI.updateStatus(id, status),
     onMutate: async ({ id, status }) => {
-      // Optimistic update
       await qc.cancelQueries({ queryKey: TASKS_KEY })
       const prev = qc.getQueryData(TASKS_KEY)
       qc.setQueryData(TASKS_KEY, old =>

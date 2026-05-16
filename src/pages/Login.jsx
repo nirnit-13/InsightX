@@ -5,27 +5,37 @@ import { useAuth } from '../context/AuthContext'
 import { RiFlashlightLine, RiEyeLine, RiEyeOffLine, RiLockLine, RiMailLine } from 'react-icons/ri'
 
 const DEMO_CREDS = [
-  { label: 'Admin', email: 'admin@insightx.io', password: 'admin123' },
-  { label: 'Contributor', email: 'sam@insightx.io', password: 'pass123' },
+  { label: 'Admin',       email: 'admin@insightx.io', password: 'admin123' },
+  { label: 'Contributor', email: 'sam@insightx.io',   password: 'pass123'  },
 ]
 
 export default function Login() {
-  const { login } = useAuth()
-  const navigate = useNavigate()
-  const [form, setForm] = useState({ email: '', password: '' })
+  const { login }  = useAuth()
+  const navigate   = useNavigate()
+  const [form, setForm]     = useState({ email: '', password: '' })
   const [showPw, setShowPw] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 600))
-    const result = login(form.email, form.password)
+
+    // FIX: login() is async — must be awaited so the token is saved to
+    // localStorage before we check result.success or navigate away.
+    // Without await, result was a Promise object, result.success was
+    // undefined, and localStorage('ix_token') was never set — causing
+    // every subsequent API call to go out without a Bearer header → 403.
+    const result = await login(form.email, form.password)
+
     setLoading(false)
-    if (result.success) navigate('/dashboard')
-    else setError(result.error)
+
+    if (result.success) {
+      navigate('/dashboard')
+    } else {
+      setError(result.error || 'Login failed')
+    }
   }
 
   const fillDemo = (cred) => {
@@ -63,7 +73,8 @@ export default function Login() {
           <div className="flex gap-2">
             {DEMO_CREDS.map(c => (
               <button key={c.label} onClick={() => fillDemo(c)}
-                className="flex-1 py-2 rounded-xl text-xs font-display font-semibold border border-ix-border text-ix-muted hover:border-ix-accent hover:text-ix-accent hover:bg-ix-accent/10 transition-all">
+                className="flex-1 py-2 rounded-xl text-xs font-display font-semibold border border-ix-border
+                           text-ix-muted hover:border-ix-accent hover:text-ix-accent hover:bg-ix-accent/10 transition-all">
                 {c.label}
               </button>
             ))}
@@ -112,11 +123,13 @@ export default function Login() {
 
             <motion.button
               type="submit" disabled={loading}
-              whileHover={{ scale: loading ? 1 : 1.02 }} whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: 0.98 }}
               className="btn-primary w-full py-3.5 flex items-center justify-center gap-2">
-              {loading ? (
-                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Signing in...</>
-              ) : 'Sign in to InsightX'}
+              {loading
+                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Signing in...</>
+                : 'Sign in to InsightX'
+              }
             </motion.button>
           </form>
 
