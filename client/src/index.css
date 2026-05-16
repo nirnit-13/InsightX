@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #050810;
+    color: #f1f5f9;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0d1117;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1f2937;
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #374151;
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.3);
+    color: #f1f5f9;
+  }
+}
+
+@layer components {
+  .glass {
+    background: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .glass-light {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-warm {
+    background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .border-glow {
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.05);
+  }
+
+  .btn-primary {
+    @apply relative overflow-hidden bg-gradient-to-r from-ix-accent to-ix-accent2 text-white font-display font-semibold 
+           px-6 py-3 rounded-xl transition-all duration-300 
+           hover:shadow-glow hover:scale-105 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply relative overflow-hidden border border-ix-border text-ix-muted font-display font-medium 
+           px-6 py-3 rounded-xl transition-all duration-300 
+           hover:border-ix-accent hover:text-ix-text hover:bg-ix-accent/10;
+  }
+
+  .card {
+    @apply glass rounded-2xl p-6 transition-all duration-300 
+           hover:shadow-card-hover hover:border-ix-accent/20;
+  }
+
+  .stat-card {
+    @apply glass rounded-2xl p-5 relative overflow-hidden transition-all duration-300 
+           hover:shadow-card-hover hover:scale-[1.02];
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-ix-muted font-body font-medium 
+           transition-all duration-200 hover:text-ix-text hover:bg-white/5;
+  }
+
+  .nav-link.active {
+    @apply text-ix-text bg-ix-accent/15 border border-ix-accent/20;
+  }
+
+  .input {
+    @apply w-full bg-ix-surface border border-ix-border rounded-xl px-4 py-3 
+           text-ix-text placeholder-ix-muted font-body text-sm 
+           focus:outline-none focus:border-ix-accent/50 focus:ring-2 focus:ring-ix-accent/10 
+           transition-all duration-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium;
+  }
+
+  .shimmer-bg {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+@layer utilities {
+  .bg-grid {
+    background-image: linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  .glow-dot {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+  }
+}
+
+/* Chart overrides */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgba(13, 17, 23, 0.95) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: rgba(255, 255, 255, 0.04) !important;
+}
+
+.recharts-text {
+  fill: #64748b !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 11px !important;
+}
