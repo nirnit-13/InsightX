@@ -1,11 +1,3 @@
-/**
- * src/App.jsx
- *
- * FIX: No /analytics route — Analytics.jsx has been intentionally removed.
- *      Dashboard.jsx is the ONLY analytics hub.
- *      All stale references to /analytics cleaned up.
- */
-
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import RoleProtectedRoute from './components/auth/RoleProtectedRoute'
@@ -53,7 +45,8 @@ function PublicRoute({ children }) {
 // ── App ────────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <BrowserRouter>
+    // FIX: Added future flags to silence React Router v7 migration warnings
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />
@@ -93,11 +86,6 @@ export default function App() {
             }
           />
 
-          {/*
-           * FIX: /analytics route intentionally NOT defined.
-           * Analytics.jsx has been removed. Dashboard.jsx is the analytics hub.
-           * Any stale /analytics link redirects to dashboard.
-           */}
           <Route path="analytics" element={<Navigate to="/dashboard" replace />} />
         </Route>
 

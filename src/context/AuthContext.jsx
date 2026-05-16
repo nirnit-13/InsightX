@@ -1,12 +1,3 @@
-/**
- * src/context/AuthContext.jsx
- *
- * FIX: On mount, validates that the stored token actually works by calling
- * GET /auth/me. If it gets a 401/403 back (stale token from old secret),
- * the session is cleared and the user is sent to login fresh.
- * This prevents the "valid-looking token that the backend rejects" 403 loop.
- */
-
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { authAPI } from '../services/api/authAPI'
 
@@ -36,7 +27,12 @@ const STORAGE_KEY_USER  = 'ix_user'
 
 function saveSession(token, user) {
   if (token) localStorage.setItem(STORAGE_KEY_TOKEN, token)
-  const safe = { id: user.id || user._id || '', email: user.email || '', role: user.role || 'contributor', ...user }
+  const safe = {
+    id:    user.id || user._id || '',
+    email: user.email || '',
+    role:  user.role || 'contributor',
+    ...user,
+  }
   localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(safe))
   return safe
 }
@@ -63,34 +59,39 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // ── On mount: rehydrate AND validate the stored token ──────────────────
+  // ── On mount: rehydrate AND validate + REFRESH from /auth/me ─────────────
   useEffect(() => {
     const stored = loadSession()
     const token  = localStorage.getItem(STORAGE_KEY_TOKEN)
 
     if (!stored || !token) {
-      // No session at all — just mark loading done
       setLoading(false)
       return
     }
 
-    // FIX: Validate token against the backend.
-    // If the backend returns 401/403 (e.g. token signed with old secret),
-    // clear the session so the user gets a fresh login instead of a 403 loop.
+    // FIX: Use the /auth/me response to refresh user data, not just validate.
+    // This corrects any stale role or other fields in localStorage.
     authAPI.me()
-      .then(() => {
-        // Token is valid — restore the session
-        setUser(stored)
+      .then((freshUser) => {
+        if (freshUser && freshUser.role) {
+          // Merge fresh data with stored data (fresh data wins for role/email)
+          const merged = { ...stored, ...freshUser }
+          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(merged))
+          setUser(merged)
+        } else {
+          // me() succeeded but returned unexpected shape — use stored
+          setUser(stored)
+        }
       })
       .catch(() => {
-        // Token rejected by backend — wipe it and force re-login
+        // Token rejected — force re-login
         clearSession()
         setUser(null)
       })
       .finally(() => setLoading(false))
   }, [])
 
-  // ── Real API login ─────────────────────────────────────────────────────
+  // ── Real API login ────────────────────────────────────────────────────────
   const loginWithAPI = async (email, password) => {
     try {
       const data = await authAPI.login(email, password)
@@ -102,7 +103,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ── Mock login ─────────────────────────────────────────────────────────
+  // ── Mock login ────────────────────────────────────────────────────────────
   const loginMock = (email, password) => {
     const found = MOCK_USERS.find(u => u.email === email && u.password === password)
     if (!found) return { success: false, error: 'Invalid credentials' }
@@ -115,7 +116,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) =>
     USE_REAL_API ? loginWithAPI(email, password) : loginMock(email, password)
 
-  // ── Real API signup ────────────────────────────────────────────────────
+  // ── Real API signup ───────────────────────────────────────────────────────
   const signupWithAPI = async (name, email, password, role = 'contributor') => {
     try {
       const data = await authAPI.signup(name, email, password, role)
