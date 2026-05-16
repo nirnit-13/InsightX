@@ -3,19 +3,22 @@
 @tailwind utilities;
 
 /*
- * FIX — Theme system:
- * The root cause of "theme toggle changes state but UI doesn't switch" was
- * that body had a hardcoded `background-color: #050810` which always
- * forced dark regardless of the .dark / .light class on <html>.
+ * THEME SYSTEM — How it works:
  *
- * Solution:
- *   1. CSS variables defined separately for .dark and .light on :root
- *   2. body uses var() instead of hardcoded hex values
- *   3. .glass, .card, .input etc also use var() so they respond to theme
- *   4. Tailwind darkMode: 'class' in tailwind.config.js handles the rest
+ *  1. ThemeContext adds/removes `dark` class on <html>.
+ *  2. CSS variables switch values under html.dark / html.light.
+ *  3. Tailwind color tokens (ix-text, ix-bg, etc.) reference --ix-* vars
+ *     so every className="text-ix-text" automatically responds to the theme.
+ *  4. Component-level .glass, .card, .input classes also use vars.
+ *
+ *  FIX: Added --ix-* variable aliases so Tailwind can consume them.
+ *  FIX: Light mode card/glass backgrounds adjusted so they look like a
+ *       real light UI (white cards, soft shadows) rather than washed-out
+ *       transparent grey from the dark-mode glass values.
+ *  FIX: body background removed hardcoded #050810, now uses var(--ix-bg).
  */
 
-/* ── CSS custom properties — Dark (default) ── */
+/* ── Dark theme (default) ────────────────────────────────────────────────── */
 :root,
 html.dark {
   --bg:          #050810;
@@ -31,23 +34,43 @@ html.dark {
   --scrollbar-track: #0d1117;
   --scrollbar-thumb: #1f2937;
   --scrollbar-thumb-hover: #374151;
+  --subtle:      #1e2d3d;
+
+  /* Tailwind bridge — ix-* colors in tailwind.config.js reference these */
+  --ix-bg:      #050810;
+  --ix-surface: #0d1117;
+  --ix-card:    #111827;
+  --ix-border-solid: #1f2937;
+  --ix-text:    #f1f5f9;
+  --ix-muted:   #64748b;
+  --ix-subtle:  #1e2d3d;
 }
 
-/* ── CSS custom properties — Light ── */
+/* ── Light theme ─────────────────────────────────────────────────────────── */
 html.light {
-  --bg:          #f8fafc;
+  --bg:          #f1f5f9;
   --surface:     #ffffff;
   --card:        #ffffff;
-  --border:      rgba(0, 0, 0, 0.08);
+  --border:      rgba(0, 0, 0, 0.07);
   --border-solid: #e2e8f0;
   --text:        #0f172a;
   --text-muted:  #64748b;
-  --glass-bg:    rgba(255, 255, 255, 0.8);
-  --glass-light-bg: rgba(0, 0, 0, 0.02);
-  --input-bg:    #f1f5f9;
-  --scrollbar-track: #f1f5f9;
+  --glass-bg:    rgba(255, 255, 255, 0.92);
+  --glass-light-bg: rgba(241, 245, 249, 0.6);
+  --input-bg:    #f8fafc;
+  --scrollbar-track: #e2e8f0;
   --scrollbar-thumb: #cbd5e1;
   --scrollbar-thumb-hover: #94a3b8;
+  --subtle:      #e2e8f0;
+
+  /* Tailwind bridge */
+  --ix-bg:      #f1f5f9;
+  --ix-surface: #ffffff;
+  --ix-card:    #ffffff;
+  --ix-border-solid: #e2e8f0;
+  --ix-text:    #0f172a;
+  --ix-muted:   #64748b;
+  --ix-subtle:  #e2e8f0;
 }
 
 @layer base {
@@ -61,7 +84,6 @@ html.light {
     scroll-behavior: smooth;
   }
 
-  /* FIX: body uses CSS vars so theme switching works instantly */
   body {
     background-color: var(--bg);
     color: var(--text);
@@ -69,24 +91,16 @@ html.light {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
-    /* smooth transition on theme change */
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-  }
+  ::-webkit-scrollbar       { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
   ::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
     border-radius: 99px;
   }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--scrollbar-thumb-hover);
-  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
   ::selection {
     background: rgba(99, 102, 241, 0.3);
@@ -95,7 +109,6 @@ html.light {
 }
 
 @layer components {
-  /* FIX: glass uses var(--glass-bg) so it responds to theme */
   .glass {
     background: var(--glass-bg);
     backdrop-filter: blur(12px);
@@ -130,55 +143,96 @@ html.light {
   }
 
   .btn-primary {
-    @apply relative overflow-hidden bg-gradient-to-r from-ix-accent to-ix-accent2 text-white font-display font-semibold 
-           px-6 py-3 rounded-xl transition-all duration-300 
+    @apply relative overflow-hidden bg-gradient-to-r from-ix-accent to-ix-accent2 text-white
+           font-display font-semibold px-6 py-3 rounded-xl transition-all duration-300
            hover:shadow-glow hover:scale-105 active:scale-95;
   }
 
   .btn-ghost {
-    @apply relative overflow-hidden border border-ix-border text-ix-muted font-display font-medium 
-           px-6 py-3 rounded-xl transition-all duration-300 
-           hover:border-ix-accent hover:text-ix-text hover:bg-ix-accent/10;
+    border: 1px solid var(--border-solid);
+    color: var(--text-muted);
+    @apply relative overflow-hidden font-display font-medium
+           px-6 py-3 rounded-xl transition-all duration-300
+           hover:text-ix-text hover:bg-ix-accent/10;
   }
 
-  /* FIX: card uses var(--glass-bg) and var(--border) */
+  /* Light mode btn-ghost needs a visible border */
+  html.light .btn-ghost:hover {
+    border-color: #6366f1;
+  }
+
   .card {
     background: var(--glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    @apply rounded-2xl p-6 transition-all duration-300 
-           hover:shadow-card-hover;
+    @apply rounded-2xl p-6 transition-all duration-300;
   }
 
-  /* FIX: stat-card same */
+  /* Light mode: cards get a real white background + subtle shadow */
+  html.light .card {
+    background: var(--card);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    backdrop-filter: none;
+  }
+
+  html.light .glass {
+    background: var(--glass-bg);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    backdrop-filter: none;
+  }
+
   .stat-card {
     background: var(--glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    @apply rounded-2xl p-5 relative overflow-hidden transition-all duration-300 
-           hover:shadow-card-hover hover:scale-[1.02];
+    @apply rounded-2xl p-5 relative overflow-hidden transition-all duration-300
+           hover:scale-[1.02];
+  }
+
+  html.light .stat-card {
+    background: var(--card);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    backdrop-filter: none;
   }
 
   .nav-link {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-ix-muted font-body font-medium 
-           transition-all duration-200 hover:text-ix-text hover:bg-white/5;
+    color: var(--text-muted);
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl font-body font-medium
+           transition-all duration-200;
+  }
+
+  .nav-link:hover {
+    color: var(--text);
+    background: rgba(99, 102, 241, 0.08);
   }
 
   .nav-link.active {
-    @apply text-ix-text bg-ix-accent/15 border border-ix-accent/20;
+    color: var(--text);
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.2);
   }
 
-  /* FIX: input uses var(--input-bg) */
   .input {
     width: 100%;
     background: var(--input-bg);
     border: 1px solid var(--border-solid);
-    @apply rounded-xl px-4 py-3 
-           text-ix-text placeholder-ix-muted font-body text-sm 
-           focus:outline-none focus:border-ix-accent/50 focus:ring-2 focus:ring-ix-accent/10 
+    color: var(--text);
+    @apply rounded-xl px-4 py-3 placeholder-ix-muted font-body text-sm
+           focus:outline-none focus:border-ix-accent/50 focus:ring-2 focus:ring-ix-accent/10
            transition-all duration-200;
+  }
+
+  /* Light mode: inputs need visible borders */
+  html.light .input {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  html.light .input:focus {
+    border-color: #6366f1;
+    background: #ffffff;
   }
 
   .badge {
@@ -186,14 +240,19 @@ html.light {
   }
 
   .shimmer-bg {
-    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+    background: linear-gradient(90deg,
+      rgba(255,255,255,0.03) 25%,
+      rgba(255,255,255,0.08) 50%,
+      rgba(255,255,255,0.03) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
   }
 
-  /* Light mode shimmer */
   html.light .shimmer-bg {
-    background: linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.07) 50%, rgba(0,0,0,0.03) 75%);
+    background: linear-gradient(90deg,
+      rgba(0,0,0,0.04) 25%,
+      rgba(0,0,0,0.08) 50%,
+      rgba(0,0,0,0.04) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
   }
@@ -201,8 +260,9 @@ html.light {
 
 @layer utilities {
   .bg-grid {
-    background-image: linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+    background-image:
+      linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
     background-size: 40px 40px;
   }
 
@@ -218,7 +278,7 @@ html.light {
   }
 }
 
-/* Chart overrides */
+/* ── Chart overrides ─────────────────────────────────────────────────────── */
 .recharts-tooltip-wrapper .recharts-default-tooltip {
   background: rgba(13, 17, 23, 0.95) !important;
   border: 1px solid rgba(99, 102, 241, 0.2) !important;
@@ -246,4 +306,22 @@ html.light .recharts-cartesian-grid-vertical line {
   fill: #64748b !important;
   font-family: 'DM Sans', sans-serif !important;
   font-size: 11px !important;
+}
+
+/* Light mode recharts axis text */
+html.light .recharts-text {
+  fill: #475569 !important;
+}
+
+/* ── Sidebar light mode ──────────────────────────────────────────────────── */
+html.light aside,
+html.light nav {
+  background: var(--surface) !important;
+  border-color: var(--border-solid) !important;
+}
+
+/* ── Select / option light mode ─────────────────────────────────────────── */
+html.light select option {
+  background: #ffffff;
+  color: #0f172a;
 }

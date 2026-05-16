@@ -1,18 +1,30 @@
-import { useState } from 'react'
+/**
+ * src/pages/Tasks.jsx
+ *
+ * FIXES:
+ *  1. Contributors only see tasks assigned to them (filtered by user.id/email).
+ *     Admins see all tasks — same as before.
+ *  2. Summary counts reflect the filtered list (not total) for contributors.
+ *  3. Contributors cannot create tasks (Add button hidden — was already
+ *     conditional on isAdmin, kept the same).
+ *  4. ContributorCard forwardRef issue fixed in Contributors.jsx separately.
+ */
+
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TASKS, CONTRIBUTORS } from '../data/mockData'
 import { StatusBadge, PriorityBadge, Avatar } from '../components/ui/Components'
-import { RiAddLine, RiSearchLine, RiCloseLine, RiCalendarLine, RiUserLine } from 'react-icons/ri'
+import { RiAddLine, RiSearchLine, RiCloseLine, RiCalendarLine } from 'react-icons/ri'
 import { useAuth } from '../context/AuthContext'
 
-const STATUSES = ['all', 'pending', 'in-progress', 'completed']
+const STATUSES   = ['all', 'pending', 'in-progress', 'completed']
 const PRIORITIES = ['all', 'high', 'medium', 'low']
 
 function getContributor(id) {
   return CONTRIBUTORS.find(c => c.id === id)
 }
 
-function TaskCard({ task, onStatusChange }) {
+function TaskCard({ task, onStatusChange, isAdmin }) {
   const assignee = getContributor(task.assigned_to)
   const isOverdue = new Date(task.deadline) < new Date() && task.status !== 'completed'
 
@@ -40,17 +52,22 @@ function TaskCard({ task, onStatusChange }) {
         <div className="flex items-center gap-2">
           {assignee && <Avatar initials={assignee.avatar} color={assignee.color} size="xs" />}
           <div>
-            <p className="text-[10px] font-medium text-ix-text">{assignee?.name?.split(' ')[0] || 'Unassigned'}</p>
-            <p className={`text-[10px] ${isOverdue ? 'text-ix-red' : 'text-ix-muted'} flex items-center gap-1`}>
+            <p className="text-[10px] font-medium text-ix-text">
+              {assignee?.name?.split(' ')[0] || 'Unassigned'}
+            </p>
+            <p className={`text-[10px] flex items-center gap-1 ${isOverdue ? 'text-ix-red' : 'text-ix-muted'}`}>
               <RiCalendarLine className="text-[10px]" />
               {new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               {isOverdue && ' · Overdue'}
             </p>
           </div>
         </div>
+        {/* Contributors can still update their own task status */}
         <select value={task.status}
           onChange={e => onStatusChange(task.id, e.target.value)}
-          className="text-[10px] font-mono bg-transparent border border-ix-border rounded-lg px-2 py-1 text-ix-muted cursor-pointer focus:outline-none focus:border-ix-accent/50 hover:border-ix-accent/30 transition-colors">
+          className="text-[10px] font-mono bg-transparent border border-ix-border rounded-lg px-2 py-1
+                     text-ix-muted cursor-pointer focus:outline-none focus:border-ix-accent/50
+                     hover:border-ix-accent/30 transition-colors">
           <option value="pending">Pending</option>
           <option value="in-progress">In Progress</option>
           <option value="completed">Completed</option>
@@ -67,13 +84,18 @@ function TaskCard({ task, onStatusChange }) {
 function AddTaskModal({ onClose, onAdd }) {
   const [form, setForm] = useState({
     title: '', description: '', priority: 'medium', status: 'pending',
-    assigned_to: '', deadline: '', tags: ''
+    assigned_to: '', deadline: '', tags: '',
   })
   const set = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
   const handleAdd = () => {
     const tags = form.tags.split(',').map(t => t.trim()).filter(Boolean)
-    onAdd({ ...form, tags, id: `t${Date.now()}`, team: 'General', created_at: new Date().toISOString() })
+    onAdd({
+      ...form, tags,
+      id: `t${Date.now()}`,
+      team: 'General',
+      created_at: new Date().toISOString(),
+    })
     onClose()
   }
 
@@ -85,18 +107,22 @@ function AddTaskModal({ onClose, onAdd }) {
         className="glass border border-ix-border rounded-2xl p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-display font-semibold text-ix-text">New Task</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/5 text-ix-muted hover:text-ix-text transition-all">
+          <button onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/5
+                       text-ix-muted hover:text-ix-text transition-all">
             <RiCloseLine />
           </button>
         </div>
         <div className="space-y-4">
           <div>
             <label className="block text-[10px] font-mono text-ix-muted mb-1.5">TASK TITLE</label>
-            <input className="input text-sm" placeholder="e.g. Redesign landing page" value={form.title} onChange={set('title')} />
+            <input className="input text-sm" placeholder="e.g. Redesign landing page"
+              value={form.title} onChange={set('title')} />
           </div>
           <div>
             <label className="block text-[10px] font-mono text-ix-muted mb-1.5">DESCRIPTION</label>
-            <textarea className="input text-sm resize-none h-20" placeholder="Task details..." value={form.description} onChange={set('description')} />
+            <textarea className="input text-sm resize-none h-20" placeholder="Task details..."
+              value={form.description} onChange={set('description')} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -109,7 +135,9 @@ function AddTaskModal({ onClose, onAdd }) {
               <label className="block text-[10px] font-mono text-ix-muted mb-1.5">ASSIGN TO</label>
               <select className="input text-sm" value={form.assigned_to} onChange={set('assigned_to')}>
                 <option value="">Unassigned</option>
-                {CONTRIBUTORS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {CONTRIBUTORS.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -120,13 +148,17 @@ function AddTaskModal({ onClose, onAdd }) {
             </div>
             <div>
               <label className="block text-[10px] font-mono text-ix-muted mb-1.5">TAGS (comma-sep)</label>
-              <input className="input text-sm" placeholder="React, API" value={form.tags} onChange={set('tags')} />
+              <input className="input text-sm" placeholder="React, API"
+                value={form.tags} onChange={set('tags')} />
             </div>
           </div>
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="btn-ghost flex-1 py-2.5 text-sm">Cancel</button>
-          <button onClick={handleAdd} disabled={!form.title} className="btn-primary flex-1 py-2.5 text-sm disabled:opacity-50">Create Task</button>
+          <button onClick={handleAdd} disabled={!form.title}
+            className="btn-primary flex-1 py-2.5 text-sm disabled:opacity-50">
+            Create Task
+          </button>
         </div>
       </motion.div>
     </motion.div>
@@ -134,43 +166,64 @@ function AddTaskModal({ onClose, onAdd }) {
 }
 
 export default function Tasks() {
-  const { isAdmin } = useAuth()
-  const [tasks, setTasks] = useState(TASKS)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const { isAdmin, user } = useAuth()
+  const [allTasks, setAllTasks] = useState(TASKS)
+  const [search, setSearch]           = useState('')
+  const [statusFilter, setStatusFilter]     = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
-  const [showModal, setShowModal] = useState(false)
+  const [showModal, setShowModal]     = useState(false)
 
-  const filtered = tasks.filter(t => {
-    const matchSearch = t.title.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = statusFilter === 'all' || t.status === statusFilter
+  /**
+   * FIX: Role-aware base task list.
+   * Admin → all tasks.
+   * Contributor → only tasks where assigned_to matches their contributor id OR email.
+   */
+  const baseTasks = useMemo(() => {
+    if (isAdmin) return allTasks
+
+    // Match by contributor id stored in the task, falling back to email lookup
+    const me = CONTRIBUTORS.find(c => c.email === user?.email)
+    if (!me) return []
+    return allTasks.filter(t => t.assigned_to === me.id)
+  }, [allTasks, isAdmin, user?.email])
+
+  const filtered = baseTasks.filter(t => {
+    const matchSearch   = t.title.toLowerCase().includes(search.toLowerCase())
+    const matchStatus   = statusFilter   === 'all' || t.status   === statusFilter
     const matchPriority = priorityFilter === 'all' || t.priority === priorityFilter
     return matchSearch && matchStatus && matchPriority
   })
 
+  // Counts based on the role-scoped list
   const counts = {
-    total: tasks.length,
-    pending: tasks.filter(t => t.status === 'pending').length,
-    'in-progress': tasks.filter(t => t.status === 'in-progress').length,
-    completed: tasks.filter(t => t.status === 'completed').length,
+    total:        baseTasks.length,
+    pending:      baseTasks.filter(t => t.status === 'pending').length,
+    'in-progress':baseTasks.filter(t => t.status === 'in-progress').length,
+    completed:    baseTasks.filter(t => t.status === 'completed').length,
   }
 
-  const handleStatusChange = (id, status) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t))
-  }
+  const handleStatusChange = (id, status) =>
+    setAllTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t))
 
-  const handleAdd = (task) => setTasks(prev => [task, ...prev])
+  const handleAdd = (task) => setAllTasks(prev => [task, ...prev])
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="font-display font-bold text-2xl text-ix-text">Task Management</h1>
-          <p className="text-ix-muted text-sm mt-1">{tasks.length} total tasks</p>
+          <h1 className="font-display font-bold text-2xl text-ix-text">
+            {isAdmin ? 'Task Management' : 'My Tasks'}
+          </h1>
+          <p className="text-ix-muted text-sm mt-1">
+            {isAdmin
+              ? `${baseTasks.length} total tasks across all contributors`
+              : `${baseTasks.length} tasks assigned to you`}
+          </p>
         </div>
         {isAdmin && (
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 text-sm px-5 py-2.5">
+          <button onClick={() => setShowModal(true)}
+            className="btn-primary flex items-center gap-2 text-sm px-5 py-2.5">
             <RiAddLine /> New Task
           </button>
         )}
@@ -179,10 +232,10 @@ export default function Tasks() {
       {/* Summary row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Tasks', value: counts.total, color: '#6366f1' },
-          { label: 'Pending', value: counts.pending, color: '#f59e0b' },
-          { label: 'In Progress', value: counts['in-progress'], color: '#06b6d4' },
-          { label: 'Completed', value: counts.completed, color: '#10b981' },
+          { label: 'Total Tasks',  value: counts.total,          color: '#6366f1' },
+          { label: 'Pending',      value: counts.pending,        color: '#f59e0b' },
+          { label: 'In Progress',  value: counts['in-progress'], color: '#06b6d4' },
+          { label: 'Completed',    value: counts.completed,      color: '#10b981' },
         ].map(s => (
           <div key={s.label} className="glass rounded-xl p-4 text-center">
             <p className="text-2xl font-display font-bold" style={{ color: s.color }}>{s.value}</p>
@@ -202,7 +255,9 @@ export default function Tasks() {
           {STATUSES.map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`text-xs px-3 py-1.5 rounded-xl font-medium capitalize transition-all ${
-                statusFilter === s ? 'bg-ix-accent text-white' : 'glass border border-ix-border text-ix-muted hover:text-ix-text'
+                statusFilter === s
+                  ? 'bg-ix-accent text-white'
+                  : 'glass border border-ix-border text-ix-muted hover:text-ix-text'
               }`}>
               {s === 'all' ? 'All Status' : s}
             </button>
@@ -212,7 +267,9 @@ export default function Tasks() {
           {PRIORITIES.map(p => (
             <button key={p} onClick={() => setPriorityFilter(p)}
               className={`text-xs px-3 py-1.5 rounded-xl font-medium capitalize transition-all ${
-                priorityFilter === p ? 'bg-ix-accent2 text-white' : 'glass border border-ix-border text-ix-muted hover:text-ix-text'
+                priorityFilter === p
+                  ? 'bg-ix-accent2 text-white'
+                  : 'glass border border-ix-border text-ix-muted hover:text-ix-text'
               }`}>
               {p === 'all' ? '⚡ Priority' : p}
             </button>
@@ -224,7 +281,9 @@ export default function Tasks() {
       <motion.div layout className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <AnimatePresence mode="popLayout">
           {filtered.map(task => (
-            <TaskCard key={task.id} task={task} onStatusChange={handleStatusChange} />
+            <TaskCard key={task.id} task={task}
+              onStatusChange={handleStatusChange}
+              isAdmin={isAdmin} />
           ))}
         </AnimatePresence>
       </motion.div>
@@ -232,13 +291,19 @@ export default function Tasks() {
       {filtered.length === 0 && (
         <div className="text-center py-20">
           <p className="text-4xl mb-3">📋</p>
-          <p className="font-display text-ix-text font-semibold">No tasks found</p>
-          <p className="text-sm text-ix-muted mt-1">Adjust your filters or create a new task</p>
+          <p className="font-display text-ix-text font-semibold">
+            {isAdmin ? 'No tasks found' : 'No tasks assigned to you yet'}
+          </p>
+          <p className="text-sm text-ix-muted mt-1">
+            {isAdmin ? 'Adjust your filters or create a new task' : 'Check back later or contact your admin'}
+          </p>
         </div>
       )}
 
       <AnimatePresence>
-        {showModal && <AddTaskModal onClose={() => setShowModal(false)} onAdd={handleAdd} />}
+        {showModal && (
+          <AddTaskModal onClose={() => setShowModal(false)} onAdd={handleAdd} />
+        )}
       </AnimatePresence>
     </div>
   )

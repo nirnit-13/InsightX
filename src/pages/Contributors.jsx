@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, forwardRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CONTRIBUTORS } from '../data/mockData'
 import { Avatar, Badge, ProgressBar } from '../components/ui/Components'
@@ -13,12 +13,26 @@ import { useAuth } from '../context/AuthContext'
 
 const TEAMS = ['All', 'Frontend', 'Backend', 'Design', 'DevOps', 'Analytics']
 
-function ContributorCard({ contributor, onEdit, onDelete, isAdmin }) {
+/**
+ * FIX: Wrapped with React.forwardRef so framer-motion's AnimatePresence /
+ * PopChild can attach its ref without the console warning:
+ * "Function components cannot be given refs."
+ */
+const ContributorCard = forwardRef(function ContributorCard(
+  { contributor, onEdit, onDelete, isAdmin },
+  ref
+) {
   const c = contributor
   return (
-    <motion.div layout initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.96 }} whileHover={{ y: -3 }}
-      className="card group cursor-default">
+    <motion.div
+      ref={ref}
+      layout
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      whileHover={{ y: -3 }}
+      className="card group cursor-default"
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <Avatar initials={c.avatar} color={c.color} size="lg" />
@@ -48,7 +62,10 @@ function ContributorCard({ contributor, onEdit, onDelete, isAdmin }) {
 
       <div className="flex flex-wrap gap-1.5 mb-4">
         {(Array.isArray(c.skills) ? c.skills : []).map(s => (
-          <span key={s} className="px-2 py-0.5 text-[10px] font-mono bg-white/5 text-ix-muted rounded border border-ix-border">{s}</span>
+          <span key={s}
+            className="px-2 py-0.5 text-[10px] font-mono bg-white/5 text-ix-muted rounded border border-ix-border">
+            {s}
+          </span>
         ))}
       </div>
 
@@ -94,7 +111,7 @@ function ContributorCard({ contributor, onEdit, onDelete, isAdmin }) {
       </div>
     </motion.div>
   )
-}
+})
 
 function AddEditModal({ contributor, onClose, onSave }) {
   const isEdit = !!contributor?.id
@@ -125,18 +142,21 @@ function AddEditModal({ contributor, onClose, onSave }) {
       <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
         className="glass border border-ix-border rounded-2xl p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display font-semibold text-ix-text">{isEdit ? 'Edit Contributor' : 'Add Contributor'}</h2>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/5 text-ix-muted hover:text-ix-text transition-all">
+          <h2 className="font-display font-semibold text-ix-text">
+            {isEdit ? 'Edit Contributor' : 'Add Contributor'}
+          </h2>
+          <button onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/5 text-ix-muted hover:text-ix-text transition-all">
             <RiCloseLine />
           </button>
         </div>
         <div className="space-y-4">
           {[
-            { label: 'FULL NAME',              key: 'name',     placeholder: 'Alex Rivera' },
-            { label: 'EMAIL',                  key: 'email',    placeholder: 'alex@company.com' },
-            { label: 'GITHUB USERNAME',        key: 'github',   placeholder: 'alexrivera' },
-            { label: 'LINKEDIN USERNAME',      key: 'linkedin', placeholder: 'alex-rivera' },
-            { label: 'SKILLS (comma-separated)', key: 'skills', placeholder: 'React, Node.js, Python' },
+            { label: 'FULL NAME',                key: 'name',     placeholder: 'Alex Rivera' },
+            { label: 'EMAIL',                    key: 'email',    placeholder: 'alex@company.com' },
+            { label: 'GITHUB USERNAME',          key: 'github',   placeholder: 'alexrivera' },
+            { label: 'LINKEDIN USERNAME',        key: 'linkedin', placeholder: 'alex-rivera' },
+            { label: 'SKILLS (comma-separated)', key: 'skills',   placeholder: 'React, Node.js, Python' },
           ].map(f => (
             <div key={f.key}>
               <label className="block text-[10px] font-mono text-ix-muted mb-1.5">{f.label}</label>
@@ -175,10 +195,10 @@ function AddEditModal({ contributor, onClose, onSave }) {
 export default function Contributors() {
   const { isAdmin } = useAuth()
   const [contributors, setContributors] = useState(CONTRIBUTORS)
-  const [search, setSearch] = useState('')
+  const [search, setSearch]         = useState('')
   const [teamFilter, setTeamFilter] = useState('All')
-  const [modal, setModal] = useState(null)         // null | 'add' | contributor-object
-  const [showCSV, setShowCSV] = useState(false)
+  const [modal, setModal]           = useState(null)   // null | 'add' | contributor-object
+  const [showCSV, setShowCSV]       = useState(false)
 
   const filtered = contributors.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -203,7 +223,9 @@ export default function Contributors() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-display font-bold text-2xl text-ix-text">Contributors</h1>
-          <p className="text-ix-muted text-sm mt-1">{contributors.length} total · {filtered.length} shown</p>
+          <p className="text-ix-muted text-sm mt-1">
+            {contributors.length} total · {filtered.length} shown
+          </p>
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
@@ -247,8 +269,13 @@ export default function Contributors() {
       <motion.div layout className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         <AnimatePresence mode="popLayout">
           {filtered.map(c => (
-            <ContributorCard key={c.id} contributor={c} isAdmin={isAdmin}
-              onEdit={c => setModal(c)} onDelete={id => setContributors(prev => prev.filter(c => c.id !== id))} />
+            <ContributorCard
+              key={c.id}
+              contributor={c}
+              isAdmin={isAdmin}
+              onEdit={c => setModal(c)}
+              onDelete={id => setContributors(prev => prev.filter(c => c.id !== id))}
+            />
           ))}
         </AnimatePresence>
       </motion.div>
