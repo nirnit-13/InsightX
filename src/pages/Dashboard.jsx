@@ -1,3 +1,22 @@
+/**
+ * src/pages/Dashboard.jsx
+ *
+ * FIX — Strict role-aware rendering:
+ *
+ *   ADMIN dashboard calls:
+ *     /analytics/overview   → useAnalyticsOverview()
+ *     /analytics/leaderboard → useLeaderboard()
+ *     (charts stay as mock/fallback data for now)
+ *
+ *   CONTRIBUTOR dashboard calls ONLY:
+ *     /analytics/me         → useMyStats()        (personal analytics)
+ *     /tasks/my             → useTasks() → getMyTasks()
+ *     /analytics/leaderboard → useLeaderboard()   (shared)
+ *
+ *   Contributors NEVER call /analytics/overview or org-level /analytics/charts.
+ *   This eliminates all 403 errors on the contributor dashboard.
+ */
+
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -19,7 +38,7 @@ import {
   RiFireLine, RiCalendarLine, RiCheckboxCircleLine, RiTimeLine, RiStarLine,
 } from 'react-icons/ri'
 
-// ── Fallback chart data (used when API is not available) ──────────────────────
+// Fallback chart data (used when API is unavailable or for static charts)
 const weeklyFallback = WEEKLY_ACTIVITY.map(d => ({
   name: d.day, Commits: d.commits, Tasks: d.tasks, Reviews: d.reviews,
 }))
@@ -29,10 +48,12 @@ const engageFallback = ENGAGEMENT_TREND.map(d => ({
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ADMIN DASHBOARD
+// Calls: /analytics/overview, /analytics/leaderboard
 // ══════════════════════════════════════════════════════════════════════════════
 function AdminDashboard() {
   const { data: stats, isLoading: sl } = useAnalyticsOverview()
   const { data: board, isLoading: bl } = useLeaderboard()
+
   const now = new Date().toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
@@ -189,30 +210,38 @@ function AdminDashboard() {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONTRIBUTOR DASHBOARD
+//
+// FIX: Calls ONLY:
+//   - /analytics/me       → useMyStats()
+//   - /tasks/my           → useTasks() (which calls getMyTasks() for contributors)
+//   - /analytics/leaderboard → useLeaderboard()
+//
+// Does NOT call /analytics/overview or org-level /analytics/charts.
 // ══════════════════════════════════════════════════════════════════════════════
 function ContributorDashboard() {
-  const { user } = useAuth()
-  const { data: myStats, isLoading } = useMyStats()
-  const { data: tasksData } = useTasks()
-  const tasks  = Array.isArray(tasksData) ? tasksData : []
+  const { user }                          = useAuth()
+  const { data: myStats, isLoading: sl }  = useMyStats()          // → /analytics/me
+  const { data: tasksData, isLoading: tl } = useTasks()           // → /tasks/my
+  const { data: board }                   = useLeaderboard()       // → /analytics/leaderboard (shared)
 
-  // Contributor only sees their own tasks
-  const myTasks = tasks.filter(t =>
-    t.assigned_to === user?.id || t.assigned_to === user?.sub
-  )
+  const tasks   = Array.isArray(tasksData) ? tasksData : []
+  const done    = tasks.filter(t => t.status === 'completed').length
+  const inProg  = tasks.filter(t => t.status === 'in-progress').length
+  const pend    = tasks.filter(t => t.status === 'pending').length
 
-  const done   = myTasks.filter(t => t.status === 'completed').length
-  const inProg = myTasks.filter(t => t.status === 'in-progress').length
-  const pend   = myTasks.filter(t => t.status === 'pending').length
-
-  if (isLoading) return <DashboardSkeleton />
+  if (sl) return <DashboardSkeleton />
 
   const personalContext = {
-    user_score:  user?.productivity_score,
-    streak:      user?.streak,
-    tasks_done:  done,
-    attendance:  user?.attendance,
+    user_score:  myStats?.productivity_score ?? user?.productivity_score,
+    streak:      myStats?.streak             ?? user?.streak,
+    tasks_done:  myStats?.completed_tasks    ?? done,
+    attendance:  myStats?.attendance         ?? user?.attendance,
   }
+
+  // My rank on the leaderboard
+  const myRank = board
+    ? board.findIndex(c => c.email === user?.email) + 1
+    : 0
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-8">
@@ -224,20 +253,42 @@ function ContributorDashboard() {
         <p className="text-ix-muted text-sm mt-1">Your personal performance dashboard</p>
       </div>
 
-      {/* Personal KPIs */}
+      {/* Personal KPIs — sourced from /analytics/me */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Productivity Score" value={myStats?.productivity_score ?? user?.productivity_score ?? 75} icon={RiFlashlightLine}       color="#6366f1" />
-        <StatCard label="Tasks Completed"    value={myStats?.completed_tasks   ?? done}                            icon={RiCheckboxCircleLine}   color="#10b981" />
-        <StatCard label="Current Streak"     value={myStats?.streak            ?? user?.streak ?? 0}  suffix="d"  icon={RiFireLine}              color="#f59e0b" />
-        <StatCard label="Attendance"         value={myStats?.attendance        ?? user?.attendance ?? 90} suffix="%" icon={RiStarLine}           color="#8b5cf6" />
+        <StatCard
+          label="Productivity Score"
+          value={myStats?.productivity_score ?? user?.productivity_score ?? 75}
+          icon={RiFlashlightLine}
+          color="#6366f1"
+        />
+        <StatCard
+          label="Tasks Completed"
+          value={myStats?.completed_tasks ?? done}
+          icon={RiCheckboxCircleLine}
+          color="#10b981"
+        />
+        <StatCard
+          label="Current Streak"
+          value={myStats?.streak ?? user?.streak ?? 0}
+          suffix="d"
+          icon={RiFireLine}
+          color="#f59e0b"
+        />
+        <StatCard
+          label="Attendance"
+          value={myStats?.attendance ?? user?.attendance ?? 90}
+          suffix="%"
+          icon={RiStarLine}
+          color="#8b5cf6"
+        />
       </div>
 
-      {/* Task breakdown */}
+      {/* Task breakdown — sourced from /tasks/my */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Completed',   value: done,   color: '#10b981', icon: RiCheckboxCircleLine },
-          { label: 'In Progress', value: inProg, color: '#06b6d4', icon: RiTimeLine },
-          { label: 'Pending',     value: pend,   color: '#f59e0b', icon: RiTaskLine },
+          { label: 'Completed',   value: myStats?.completed_tasks    ?? done,   color: '#10b981', icon: RiCheckboxCircleLine },
+          { label: 'In Progress', value: myStats?.in_progress_tasks  ?? inProg, color: '#06b6d4', icon: RiTimeLine },
+          { label: 'Pending',     value: myStats?.pending_tasks      ?? pend,   color: '#f59e0b', icon: RiTaskLine },
         ].map(s => (
           <div key={s.label} className="card text-center">
             <s.icon className="text-2xl mx-auto mb-2" style={{ color: s.color }} />
@@ -249,36 +300,76 @@ function ContributorDashboard() {
         ))}
       </div>
 
-      {/* My active tasks */}
+      {/* Badges */}
+      {myStats?.badges?.length > 0 && (
+        <div className="card">
+          <SectionHeader title="Your Badges" subtitle="Earned achievements" />
+          <div className="flex flex-wrap gap-2">
+            {myStats.badges.map((badge, i) => (
+              <span key={i}
+                className="px-3 py-1.5 text-xs font-mono bg-ix-amber/10 text-ix-amber border border-ix-amber/20 rounded-xl">
+                🏅 {badge}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* My active tasks — sourced from /tasks/my */}
       <div className="card">
         <SectionHeader
           title="My Active Tasks"
           subtitle="Tasks currently assigned to you"
           action={<Link to="/tasks" className="text-xs text-ix-accent hover:text-ix-accent2">View all →</Link>}
         />
-        {myTasks.length === 0 ? (
+        {tl ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-12" />
+            ))}
+          </div>
+        ) : tasks.length === 0 ? (
           <EmptyState icon="📋" title="No tasks yet" subtitle="Your assigned tasks will appear here" />
         ) : (
           <div className="space-y-2">
-            {myTasks.filter(t => t.status !== 'completed').slice(0, 5).map(t => (
-              <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition-all">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-ix-text truncate">{t.title}</p>
-                  <p className="text-xs text-ix-muted">Due: {t.deadline || 'No deadline'}</p>
+            {tasks
+              .filter(t => t.status !== 'completed')
+              .slice(0, 5)
+              .map(t => (
+                <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition-all">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-ix-text truncate">{t.title}</p>
+                    <p className="text-xs text-ix-muted">Due: {t.deadline || 'No deadline'}</p>
+                  </div>
+                  <span className={`text-[10px] font-mono px-2 py-1 rounded-lg font-medium
+                    ${t.priority === 'high'   ? 'text-red-500 bg-red-500/10'
+                    : t.priority === 'medium' ? 'text-amber-500 bg-amber-500/10'
+                                              : 'text-cyan-500 bg-cyan-500/10'}`}>
+                    {t.priority?.toUpperCase()}
+                  </span>
                 </div>
-                <span className={`text-[10px] font-mono px-2 py-1 rounded-lg font-medium
-                  ${t.priority === 'high'   ? 'text-red-500 bg-red-500/10'
-                  : t.priority === 'medium' ? 'text-amber-500 bg-amber-500/10'
-                                            : 'text-cyan-500 bg-cyan-500/10'}`}>
-                  {t.priority?.toUpperCase()}
-                </span>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>
 
-      {/* Productivity chart */}
+      {/* Leaderboard rank — sourced from /analytics/leaderboard (shared endpoint) */}
+      {myRank > 0 && (
+        <div className="card flex items-center gap-4">
+          <div className="text-3xl">
+            {myRank === 1 ? '🥇' : myRank === 2 ? '🥈' : myRank === 3 ? '🥉' : `#${myRank}`}
+          </div>
+          <div>
+            <p className="font-display font-semibold text-ix-text">Your Leaderboard Rank</p>
+            <p className="text-xs text-ix-muted">You are ranked #{myRank} out of {board?.length ?? '—'} contributors</p>
+          </div>
+          <Link to="/leaderboard" className="ml-auto text-xs text-ix-accent hover:text-ix-accent2">
+            View Leaderboard →
+          </Link>
+        </div>
+      )}
+
+      {/* Activity trend */}
       <div className="card">
         <SectionHeader title="Activity Trend" subtitle="6-week activity overview" />
         <GradientAreaChart
@@ -301,5 +392,14 @@ function ContributorDashboard() {
 // ── Entry point ───────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { isAdmin } = useAuth()
+
+  /**
+   * FIX: The role check here is the final guard that ensures:
+   *   - Admins see AdminDashboard (which calls admin endpoints)
+   *   - Contributors see ContributorDashboard (which only calls contributor endpoints)
+   *
+   * Because isAdmin is derived from user.role (set at login and persisted to
+   * localStorage), this is stable across page refreshes.
+   */
   return isAdmin ? <AdminDashboard /> : <ContributorDashboard />
 }

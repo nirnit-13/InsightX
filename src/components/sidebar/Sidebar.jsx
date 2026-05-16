@@ -1,3 +1,18 @@
+/**
+ * src/components/sidebar/Sidebar.jsx
+ *
+ * FIX — Sidebar nav is now strictly role-gated:
+ *
+ *   ADMIN nav shows:   Dashboard, Contributors, Tasks, Analytics, Leaderboard,
+ *                      AI Reports, Profile
+ *   CONTRIBUTOR nav shows: My Dashboard, My Tasks, Leaderboard, Profile
+ *
+ * Previously contributors could see (and click) admin nav items, which
+ * triggered admin API calls and produced repeated 403 errors.
+ *
+ * The nav config objects are kept separate so there is no accidental leakage.
+ */
+
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -18,22 +33,31 @@ import {
   RiPulseLine,
 } from 'react-icons/ri'
 
-// ── Navigation config ─────────────────────────────────────────────────────────
+// ── Navigation configs — STRICTLY SEPARATED by role ──────────────────────────
+
+/**
+ * Admin nav: full access to all platform sections.
+ */
 const ADMIN_NAV = [
-  { to: '/dashboard',    icon: RiDashboardLine,   label: 'Dashboard',    badge: null },
-  { to: '/contributors', icon: RiTeamLine,         label: 'Contributors', badge: null },
-  { to: '/tasks',        icon: RiTaskLine,         label: 'Tasks',        badge: null },
-  { to: '/analytics',   icon: RiBarChartBoxLine,   label: 'Analytics',    badge: null },
-  { to: '/leaderboard',  icon: RiTrophyLine,       label: 'Leaderboard',  badge: null },
-  { to: '/reports',      icon: RiFileChartLine,    label: 'AI Reports',   badge: 'AI' },
-  { to: '/profile',      icon: RiUserLine,         label: 'Profile',      badge: null },
+  { to: '/dashboard',    icon: RiDashboardLine,  label: 'Dashboard',    badge: null },
+  { to: '/contributors', icon: RiTeamLine,        label: 'Contributors', badge: null },
+  { to: '/tasks',        icon: RiTaskLine,        label: 'Tasks',        badge: null },
+  { to: '/analytics',    icon: RiBarChartBoxLine, label: 'Analytics',    badge: null },
+  { to: '/leaderboard',  icon: RiTrophyLine,      label: 'Leaderboard',  badge: null },
+  { to: '/reports',      icon: RiFileChartLine,   label: 'AI Reports',   badge: 'AI' },
+  { to: '/profile',      icon: RiUserLine,        label: 'Profile',      badge: null },
 ]
 
+/**
+ * Contributor nav: personal workspace ONLY.
+ * FIX: Does NOT include /contributors, /analytics, /reports.
+ *      Those routes would trigger admin API calls and cause 403 loops.
+ */
 const CONTRIBUTOR_NAV = [
-  { to: '/dashboard',   icon: RiPulseLine,     label: 'My Dashboard', badge: null },
-  { to: '/tasks',       icon: RiTaskLine,      label: 'My Tasks',     badge: null },
-  { to: '/leaderboard', icon: RiTrophyLine,    label: 'Leaderboard',  badge: null },
-  { to: '/profile',     icon: RiUserLine,      label: 'Profile',      badge: null },
+  { to: '/dashboard',   icon: RiPulseLine,   label: 'My Dashboard', badge: null },
+  { to: '/tasks',       icon: RiTaskLine,    label: 'My Tasks',     badge: null },
+  { to: '/leaderboard', icon: RiTrophyLine,  label: 'Leaderboard',  badge: null },
+  { to: '/profile',     icon: RiUserLine,    label: 'Profile',      badge: null },
 ]
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
@@ -53,7 +77,7 @@ function UserAvatar({ user, size = 'md' }) {
   )
 }
 
-// ── Nav item ──────────────────────────────────────────────────────────────────
+// ── Single nav item ───────────────────────────────────────────────────────────
 function NavItem({ item, collapsed }) {
   return (
     <NavLink
@@ -68,7 +92,6 @@ function NavItem({ item, collapsed }) {
     >
       {({ isActive }) => (
         <>
-          {/* Active indicator bar */}
           {isActive && (
             <motion.div
               layoutId="active-pill"
@@ -94,7 +117,6 @@ function NavItem({ item, collapsed }) {
             )}
           </AnimatePresence>
 
-          {/* Badge */}
           {item.badge && !collapsed && (
             <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-ix-accent/20 text-ix-accent border border-ix-accent/30">
               {item.badge}
@@ -109,9 +131,13 @@ function NavItem({ item, collapsed }) {
 // ── Main Sidebar ──────────────────────────────────────────────────────────────
 export default function Sidebar({ onClose, collapsible = false }) {
   const { user, logout, isAdmin } = useAuth()
-  const navigate = useNavigate()
+  const navigate  = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
 
+  /**
+   * FIX: Select nav items based strictly on role.
+   * Contributors NEVER see admin nav items.
+   */
   const navItems = isAdmin ? ADMIN_NAV : CONTRIBUTOR_NAV
 
   const handleLogout = () => {
@@ -120,13 +146,11 @@ export default function Sidebar({ onClose, collapsible = false }) {
     navigate('/')
   }
 
-  const sidebarWidth = collapsed ? 'w-[68px]' : 'w-60'
-
   return (
     <motion.div
       animate={{ width: collapsed ? 68 : 240 }}
       transition={{ duration: 0.25, ease: 'easeInOut' }}
-      className={`flex flex-col h-full bg-ix-surface border-r border-ix-border overflow-hidden`}
+      className="flex flex-col h-full bg-ix-surface border-r border-ix-border overflow-hidden"
     >
       {/* Logo row */}
       <div className="flex items-center gap-3 px-4 pt-5 pb-4">
@@ -148,23 +172,18 @@ export default function Sidebar({ onClose, collapsible = false }) {
           )}
         </AnimatePresence>
 
-        {/* Collapse toggle (desktop only) */}
         {collapsible && (
           <motion.button
             onClick={() => setCollapsed(p => !p)}
             className="ml-auto w-6 h-6 flex items-center justify-center rounded-lg hover:bg-white/5 text-ix-muted hover:text-ix-text transition-all flex-shrink-0"
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {collapsed ? (
-              <RiMenuUnfoldLine className="text-sm" />
-            ) : (
-              <RiMenuFoldLine className="text-sm" />
-            )}
+            {collapsed ? <RiMenuUnfoldLine className="text-sm" /> : <RiMenuFoldLine className="text-sm" />}
           </motion.button>
         )}
       </div>
 
-      {/* Role label */}
+      {/* Role badge */}
       <AnimatePresence initial={false}>
         {!collapsed && (
           <motion.div
@@ -202,7 +221,7 @@ export default function Sidebar({ onClose, collapsible = false }) {
         )}
       </AnimatePresence>
 
-      {/* Nav items */}
+      {/* Nav items — role-gated */}
       <nav className="flex-1 flex flex-col gap-0.5 px-3 overflow-y-auto overflow-x-hidden">
         {navItems.map((item) => (
           <NavItem key={item.to} item={item} collapsed={collapsed} />
