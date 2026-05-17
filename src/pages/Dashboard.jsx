@@ -197,69 +197,55 @@ function AdminDashboard() {
 
         {/* ── Engagement Trend — FIXED ── */}
         <div className="card">
-          <div className="mb-4">
+          <div className="mb-5">
             <h3 className="font-display font-semibold text-ix-text">Engagement Trend</h3>
-            <p className="text-xs text-ix-muted mt-0.5">6-week engagement & retention</p>
+            <p className="text-xs text-ix-muted mt-0.5">6-week engagement &amp; retention</p>
           </div>
-
-          {/* Metric pills — use explicit hex backgrounds so they work in both themes */}
+ 
           <div className="grid grid-cols-2 gap-3 mb-5">
             <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.22)' }}>
-              <div className="flex items-baseline gap-1.5 mb-0.5">
-                <span className="text-2xl font-display font-bold" style={{ color: '#8b5cf6' }}>
-                  {latestEngage}
-                </span>
-                <span
-                  className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded"
-                  style={{
-                    color: latestEngage >= prevEngage ? '#10b981' : '#ef4444',
-                    backgroundColor: latestEngage >= prevEngage ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-                  }}
-                >
+              <p className="text-2xl font-display font-bold mb-0.5" style={{ color: '#8b5cf6' }}>
+                {latestEngage}
+                <span className="text-xs font-mono font-normal ml-1.5" style={{
+                  color: latestEngage >= prevEngage ? '#10b981' : '#ef4444',
+                }}>
                   {latestEngage >= prevEngage ? '↑' : '↓'}{Math.abs(latestEngage - prevEngage)}
                 </span>
-              </div>
+              </p>
               <p className="text-[11px] text-ix-muted">Engagement score</p>
             </div>
-
+ 
             <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(6,182,212,0.10)', border: '1px solid rgba(6,182,212,0.22)' }}>
-              <div className="flex items-baseline gap-1.5 mb-0.5">
-                <span className="text-2xl font-display font-bold" style={{ color: '#06b6d4' }}>
-                  {latestRetain}%
-                </span>
-                <span
-                  className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded"
-                  style={{
-                    color: latestRetain >= prevRetain ? '#10b981' : '#ef4444',
-                    backgroundColor: latestRetain >= prevRetain ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-                  }}
-                >
+              <p className="text-2xl font-display font-bold mb-0.5" style={{ color: '#06b6d4' }}>
+                {latestRetain}%
+                <span className="text-xs font-mono font-normal ml-1.5" style={{
+                  color: latestRetain >= prevRetain ? '#10b981' : '#ef4444',
+                }}>
                   {latestRetain >= prevRetain ? '↑' : '↓'}{Math.abs(latestRetain - prevRetain)}
                 </span>
-              </div>
+              </p>
               <p className="text-[11px] text-ix-muted">Retention rate</p>
             </div>
           </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-4 mb-3">
+ 
+          <div className="flex items-center gap-4 mb-4">
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#8b5cf6' }} />
               <span className="text-[10px] font-mono text-ix-muted">Engagement</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#06b6d4' }} />
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#06b6d4' }} />
               <span className="text-[10px] font-mono text-ix-muted">Retention</span>
             </div>
           </div>
-
+ 
           <GradientAreaChart
             data={engageFallback}
             lines={[
               { key: 'Engagement', color: '#8b5cf6', label: 'Engagement' },
               { key: 'Retention',  color: '#06b6d4', label: 'Retention' },
             ]}
-            height={140}
+            height={150}
           />
         </div>
 
