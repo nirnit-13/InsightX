@@ -5,6 +5,7 @@ venv/
 # environment variables
 .env
 .env.local
+server/.env
 
 # python cache
 __pycache__/
