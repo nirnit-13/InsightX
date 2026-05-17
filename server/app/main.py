@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.routes import seed
 from app.routes import auth, contributors, tasks, analytics, ai
 from app.routes import reports
 from app.database.mongodb import connect_db, close_db
@@ -101,6 +102,7 @@ app.include_router(tasks.router,        prefix="/tasks",        tags=["Tasks"])
 app.include_router(analytics.router,    prefix="/analytics",    tags=["Analytics"])
 app.include_router(ai.router,           prefix="/ai",           tags=["AI Insights"])
 app.include_router(reports.router,      prefix="/reports",      tags=["Reports"])
+app.include_router(seed.router, prefix="/seed", tags=["Seed"])
 
 
 # ── Health endpoints ──────────────────────────────────────────────────────────
