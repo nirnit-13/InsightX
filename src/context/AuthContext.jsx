@@ -1,3 +1,15 @@
+/**
+ * src/context/AuthContext.jsx
+ *
+ * ROOT FIX: USE_REAL_API was checking `!== 'http://localhost:8000'` which
+ * EXCLUDED localhost — meaning mock login always ran even when the backend
+ * was running locally. Mock login never saves a real JWT token, so every
+ * API call went out without Authorization header → 403 on everything.
+ *
+ * Fix: USE_REAL_API = true whenever VITE_API_URL is set, regardless of value.
+ * This means local development with a real backend now works correctly.
+ */
+
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { authAPI } from '../services/api/authAPI'
 
@@ -18,9 +30,12 @@ export const MOCK_USERS = [
   },
 ]
 
-const USE_REAL_API =
-  !!import.meta.env.VITE_API_URL &&
-  import.meta.env.VITE_API_URL !== 'http://localhost:8000'
+/**
+ * FIX: Use the real API whenever VITE_API_URL is set (including localhost).
+ * Previously `!== 'http://localhost:8000'` caused mock mode even with a
+ * running local backend — no real token was ever stored → all API calls 403'd.
+ */
+const USE_REAL_API = !!import.meta.env.VITE_API_URL
 
 const STORAGE_KEY_TOKEN = 'ix_token'
 const STORAGE_KEY_USER  = 'ix_user'
@@ -28,9 +43,9 @@ const STORAGE_KEY_USER  = 'ix_user'
 function saveSession(token, user) {
   if (token) localStorage.setItem(STORAGE_KEY_TOKEN, token)
   const safe = {
-    id:    user.id || user._id || '',
+    id:    user.id    || user._id || '',
     email: user.email || '',
-    role:  user.role || 'contributor',
+    role:  user.role  || 'contributor',
     ...user,
   }
   localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(safe))
@@ -59,7 +74,7 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // ── On mount: rehydrate AND validate + REFRESH from /auth/me ─────────────
+  // ── On mount: rehydrate AND validate token against /auth/me ──────────────
   useEffect(() => {
     const stored = loadSession()
     const token  = localStorage.getItem(STORAGE_KEY_TOKEN)
@@ -69,22 +84,19 @@ export function AuthProvider({ children }) {
       return
     }
 
-    // FIX: Use the /auth/me response to refresh user data, not just validate.
-    // This corrects any stale role or other fields in localStorage.
+    // Validate token — if backend rejects it (stale/wrong secret), clear session
     authAPI.me()
       .then((freshUser) => {
         if (freshUser && freshUser.role) {
-          // Merge fresh data with stored data (fresh data wins for role/email)
           const merged = { ...stored, ...freshUser }
           localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(merged))
           setUser(merged)
         } else {
-          // me() succeeded but returned unexpected shape — use stored
           setUser(stored)
         }
       })
       .catch(() => {
-        // Token rejected — force re-login
+        // Token invalid — force re-login
         clearSession()
         setUser(null)
       })
@@ -103,7 +115,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ── Mock login ────────────────────────────────────────────────────────────
+  // ── Mock login (fallback when no VITE_API_URL) ────────────────────────────
   const loginMock = (email, password) => {
     const found = MOCK_USERS.find(u => u.email === email && u.password === password)
     if (!found) return { success: false, error: 'Invalid credentials' }

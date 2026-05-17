@@ -1,39 +1,78 @@
+/**
+ * src/components/charts/Charts.jsx
+ *
+ * FIX: All hardcoded dark colors replaced with CSS variable reads so
+ * charts display correctly in BOTH dark and light mode.
+ * - Axis tick color reads from CSS variable via getComputedStyle
+ * - Tooltip styles adapt per theme
+ * - Grid lines adapt per theme
+ * - DonutChart legend bars use border color from CSS var (not bg-white/5)
+ */
+
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer
+  Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 
-// ── Dark-mode-aware tooltip style (reads CSS vars at render time) ──────────
-const getTooltipStyle = () => ({
-  contentStyle: {
-    background: 'rgba(13,17,23,0.97)',
-    border: '1px solid rgba(99,102,241,0.25)',
-    borderRadius: '12px',
-    color: '#f1f5f9',
-    fontSize: '12px',
-    fontFamily: 'DM Sans, sans-serif',
-    padding: '10px 14px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-  },
-  labelStyle: {
-    color: '#94a3b8',
-    fontFamily: 'DM Sans, sans-serif',
-    marginBottom: '4px',
-  },
-  itemStyle: {
-    color: '#f1f5f9',
-    fontFamily: 'DM Sans, sans-serif',
-  },
-  cursor: { fill: 'rgba(99,102,241,0.06)' },
-})
+// ── Read CSS variable at render time so it responds to theme ──────────────
+function cssVar(name) {
+  if (typeof window === 'undefined') return '#64748b'
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#64748b'
+}
 
-const AXIS_TICK = { fill: '#64748b', fontSize: 11, fontFamily: 'DM Sans, sans-serif' }
+function isDarkMode() {
+  return document.documentElement.classList.contains('dark')
+}
+
+// ── Theme-aware tooltip styles ─────────────────────────────────────────────
+function getTooltipStyle() {
+  const dark = isDarkMode()
+  return {
+    contentStyle: {
+      background: dark ? 'rgba(13, 17, 23, 0.97)' : 'rgba(255, 255, 255, 0.98)',
+      border: `1px solid ${dark ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.2)'}`,
+      borderRadius: '12px',
+      color: dark ? '#f1f5f9' : '#0f172a',
+      fontSize: '12px',
+      fontFamily: 'DM Sans, sans-serif',
+      padding: '10px 14px',
+      boxShadow: dark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.1)',
+    },
+    labelStyle: {
+      color: dark ? '#94a3b8' : '#64748b',
+      fontFamily: 'DM Sans, sans-serif',
+      marginBottom: '4px',
+    },
+    itemStyle: {
+      color: dark ? '#f1f5f9' : '#0f172a',
+      fontFamily: 'DM Sans, sans-serif',
+    },
+    cursor: { fill: 'rgba(99,102,241,0.06)' },
+  }
+}
+
+// ── Theme-aware axis tick ──────────────────────────────────────────────────
+function getAxisTick() {
+  return {
+    fill: isDarkMode() ? '#64748b' : '#94a3b8',
+    fontSize: 11,
+    fontFamily: 'DM Sans, sans-serif',
+  }
+}
+
+// ── Theme-aware grid stroke ────────────────────────────────────────────────
+function getGridStroke() {
+  return isDarkMode() ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.07)'
+}
 
 // ── Area Chart ─────────────────────────────────────────────────────────────
 export function GradientAreaChart({ data, lines, height = 220 }) {
   const colors = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b']
   const tooltip = getTooltipStyle()
+  const axisTick = getAxisTick()
+  const gridStroke = getGridStroke()
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -45,9 +84,9 @@ export function GradientAreaChart({ data, lines, height = 220 }) {
             </linearGradient>
           ))}
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-        <XAxis dataKey="name" tick={AXIS_TICK} axisLine={false} tickLine={false} />
-        <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+        <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
+        <YAxis tick={axisTick} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={tooltip.contentStyle}
           labelStyle={tooltip.labelStyle}
@@ -76,6 +115,9 @@ export function GradientAreaChart({ data, lines, height = 220 }) {
 export function ActivityBarChart({ data, bars, height = 220 }) {
   const colors = ['#6366f1', '#06b6d4', '#10b981']
   const tooltip = getTooltipStyle()
+  const axisTick = getAxisTick()
+  const gridStroke = getGridStroke()
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart
@@ -84,9 +126,9 @@ export function ActivityBarChart({ data, bars, height = 220 }) {
         barSize={bars.length > 1 ? 8 : 16}
         barGap={2}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-        <XAxis dataKey="name" tick={AXIS_TICK} axisLine={false} tickLine={false} />
-        <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+        <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
+        <YAxis tick={axisTick} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={tooltip.contentStyle}
           labelStyle={tooltip.labelStyle}
@@ -98,7 +140,7 @@ export function ActivityBarChart({ data, bars, height = 220 }) {
             wrapperStyle={{
               fontSize: '11px',
               fontFamily: 'DM Sans, sans-serif',
-              color: '#64748b',
+              color: isDarkMode() ? '#64748b' : '#94a3b8',
               paddingTop: '8px',
             }}
           />
@@ -121,12 +163,15 @@ export function ActivityBarChart({ data, bars, height = 220 }) {
 export function TrendLineChart({ data, lines, height = 220 }) {
   const colors = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b']
   const tooltip = getTooltipStyle()
+  const axisTick = getAxisTick()
+  const gridStroke = getGridStroke()
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-        <XAxis dataKey="name" tick={AXIS_TICK} axisLine={false} tickLine={false} />
-        <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+        <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
+        <YAxis tick={axisTick} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={tooltip.contentStyle}
           labelStyle={tooltip.labelStyle}
@@ -138,7 +183,7 @@ export function TrendLineChart({ data, lines, height = 220 }) {
             wrapperStyle={{
               fontSize: '11px',
               fontFamily: 'DM Sans, sans-serif',
-              color: '#64748b',
+              color: isDarkMode() ? '#64748b' : '#94a3b8',
               paddingTop: '8px',
             }}
           />

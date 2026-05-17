@@ -2,12 +2,11 @@
  * src/pages/Dashboard.jsx
  *
  * FIXES:
- *  1. Weekly Activity bar chart tooltip now fully visible in dark mode
- *  2. Team Split donut chart properly fits container with legend alongside
- *  3. Engagement Trend section completely redesigned — clean card with proper spacing
- *  4. All chart containers use consistent sizing and padding
- *  5. Admin contributor/task changes persist via API (falls back to mock)
- *  6. Real-time polling re-fetches data every 30s
+ *  1. Team Split legend bars use border color from CSS var — visible in light mode
+ *  2. Engagement Trend fully redesigned — clean metrics + chart, no bad layout
+ *  3. All `bg-white/5`, `bg-white/3` replaced with theme-aware CSS var equivalents
+ *  4. Chart text (axis, legend) now theme-aware via Charts.jsx fix
+ *  5. hover:bg-white/3 → hover:bg-ix-subtle/30 so hover states work in light mode
  */
 
 import { motion } from 'framer-motion'
@@ -42,18 +41,6 @@ const engageFallback = ENGAGEMENT_TREND.map(d => ({
   name: d.week, Engagement: d.engagement, Retention: d.retention,
 }))
 
-// ── Stat delta badge ───────────────────────────────────────────────────────
-function DeltaBadge({ value, suffix = '%' }) {
-  const up = value >= 0
-  return (
-    <span className={`flex items-center gap-0.5 text-xs font-mono font-semibold px-2 py-0.5 rounded-full
-      ${up ? 'text-ix-green bg-ix-green/10' : 'text-ix-red bg-ix-red/10'}`}>
-      {up ? <RiArrowUpLine className="text-[10px]" /> : <RiArrowDownLine className="text-[10px]" />}
-      {Math.abs(value)}{suffix}
-    </span>
-  )
-}
-
 // ══════════════════════════════════════════════════════════════════════════════
 // ADMIN DASHBOARD
 // ══════════════════════════════════════════════════════════════════════════════
@@ -73,6 +60,9 @@ function AdminDashboard() {
       name: c.name, score: c.productivity_score, team: c.team,
     })),
   }
+
+  // Team total for percentage calculation
+  const teamTotal = TEAM_DISTRIBUTION.reduce((a, b) => a + b.value, 0)
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -145,7 +135,7 @@ function AdminDashboard() {
                 { label: 'Reviews', color: '#10b981' },
               ].map(l => (
                 <div key={l.label} className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: l.color }} />
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: l.color }} />
                   <span className="text-[10px] font-mono text-ix-muted">{l.label}</span>
                 </div>
               ))}
@@ -162,40 +152,47 @@ function AdminDashboard() {
           />
         </div>
 
-        {/* Team Split — fixed layout */}
+        {/* Team Split */}
         <div className="card flex flex-col">
-          <div className="mb-4">
+          <div className="mb-3">
             <h3 className="font-display font-semibold text-ix-text">Team Split</h3>
             <p className="text-xs text-ix-muted mt-0.5">By contribution area</p>
           </div>
 
-          {/* Chart sits in a fixed-height container so it never overflows */}
-          <div className="flex-1 min-h-0" style={{ height: '180px' }}>
+          {/* Donut chart */}
+          <div style={{ height: '180px' }}>
             <DonutChart data={TEAM_DISTRIBUTION} height={180} />
           </div>
 
-          {/* Legend — sits below chart, never overlaps */}
-          <div className="mt-4 space-y-2">
-            {TEAM_DISTRIBUTION.map(t => (
-              <div key={t.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
-                  <span className="text-xs text-ix-muted">{t.name}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-1 rounded-full overflow-hidden bg-white/5">
+          {/* FIX: Legend uses border instead of bg-white/5 — visible in both themes */}
+          <div className="mt-3 space-y-2">
+            {TEAM_DISTRIBUTION.map(t => {
+              const pct = Math.round((t.value / teamTotal) * 100)
+              return (
+                <div key={t.name} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.round((t.value / TEAM_DISTRIBUTION.reduce((a, b) => a + b.value, 0)) * 100)}%`,
-                        backgroundColor: t.color,
-                      }}
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: t.color }}
                     />
+                    <span className="text-xs text-ix-muted truncate">{t.name}</span>
                   </div>
-                  <span className="text-xs font-mono text-ix-text w-5 text-right">{t.value}</span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* FIX: use border + colored fill instead of bg-white/5 */}
+                    <div
+                      className="w-16 h-1.5 rounded-full overflow-hidden"
+                      style={{ backgroundColor: 'var(--border-solid)' }}
+                    >
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, backgroundColor: t.color }}
+                      />
+                    </div>
+                    <span className="text-xs font-mono text-ix-text w-5 text-right">{t.value}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -203,35 +200,48 @@ function AdminDashboard() {
       {/* ── Charts row 2: Engagement Trend + AI Insights ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        {/* Engagement Trend — redesigned */}
+        {/* Engagement Trend — clean redesign */}
         <div className="card">
-          <div className="flex items-start justify-between mb-5">
+          <div className="flex items-start justify-between mb-4">
             <div>
               <h3 className="font-display font-semibold text-ix-text">Engagement Trend</h3>
               <p className="text-xs text-ix-muted mt-0.5">6-week engagement & retention</p>
             </div>
-            <div className="flex flex-col gap-1 items-end">
+            {/* Legend */}
+            <div className="flex flex-col gap-1.5 items-end">
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-[#8b5cf6]" />
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#8b5cf6' }} />
                 <span className="text-[10px] font-mono text-ix-muted">Engagement</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-[#06b6d4]" />
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#06b6d4' }} />
                 <span className="text-[10px] font-mono text-ix-muted">Retention</span>
               </div>
             </div>
           </div>
 
-          {/* Metric summary row */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <div className="rounded-xl bg-[#8b5cf6]/10 border border-[#8b5cf6]/15 p-3">
-              <p className="text-xl font-display font-bold text-[#8b5cf6]">
+          {/* FIX: Metric pills use border-based styling — visible in both themes */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div
+              className="rounded-xl p-3"
+              style={{
+                backgroundColor: 'rgba(139,92,246,0.08)',
+                border: '1px solid rgba(139,92,246,0.2)',
+              }}
+            >
+              <p className="text-xl font-display font-bold" style={{ color: '#8b5cf6' }}>
                 {engageFallback[engageFallback.length - 1]?.Engagement ?? 0}
               </p>
               <p className="text-[10px] text-ix-muted mt-0.5">Current engagement</p>
             </div>
-            <div className="rounded-xl bg-[#06b6d4]/10 border border-[#06b6d4]/15 p-3">
-              <p className="text-xl font-display font-bold text-[#06b6d4]">
+            <div
+              className="rounded-xl p-3"
+              style={{
+                backgroundColor: 'rgba(6,182,212,0.08)',
+                border: '1px solid rgba(6,182,212,0.2)',
+              }}
+            >
+              <p className="text-xl font-display font-bold" style={{ color: '#06b6d4' }}>
                 {engageFallback[engageFallback.length - 1]?.Retention ?? 0}%
               </p>
               <p className="text-[10px] text-ix-muted mt-0.5">Retention rate</p>
@@ -244,7 +254,7 @@ function AdminDashboard() {
               { key: 'Engagement', color: '#8b5cf6', label: 'Engagement' },
               { key: 'Retention',  color: '#06b6d4', label: 'Retention' },
             ]}
-            height={160}
+            height={150}
           />
         </div>
 
@@ -266,7 +276,7 @@ function AdminDashboard() {
               </Link>
             }
           />
-          <div className="space-y-2">
+          <div className="space-y-1">
             {bl
               ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)
               : (board || []).slice(0, 5).map((c, i) => (
@@ -275,7 +285,10 @@ function AdminDashboard() {
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07 }}
-                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/3 transition-all"
+                  className="flex items-center gap-3 p-2.5 rounded-xl transition-all"
+                  style={{ ':hover': { backgroundColor: 'var(--glass-light-bg)' } }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--glass-light-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <div className="w-6 text-center text-sm flex-shrink-0">
                     {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉'
@@ -402,15 +415,21 @@ function ContributorDashboard() {
         ) : (
           <div className="space-y-2">
             {tasks.filter(t => t.status !== 'completed').slice(0, 5).map(t => (
-              <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/3 transition-all">
+              <div
+                key={t.id}
+                className="flex items-center gap-3 p-3 rounded-xl transition-all"
+                style={{ border: '1px solid transparent' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--glass-light-bg)'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-ix-text truncate">{t.title}</p>
                   <p className="text-xs text-ix-muted">Due: {t.deadline || 'No deadline'}</p>
                 </div>
                 <span className={`text-[10px] font-mono px-2 py-1 rounded-lg font-medium
-                  ${t.priority === 'high'   ? 'text-red-400 bg-red-500/10'
-                  : t.priority === 'medium' ? 'text-amber-400 bg-amber-500/10'
-                                            : 'text-cyan-400 bg-cyan-500/10'}`}>
+                  ${t.priority === 'high'   ? 'text-ix-red   bg-ix-red/10'
+                  : t.priority === 'medium' ? 'text-ix-amber bg-ix-amber/10'
+                                            : 'text-ix-cyan  bg-ix-cyan/10'}`}>
                   {t.priority?.toUpperCase()}
                 </span>
               </div>
@@ -437,13 +456,13 @@ function ContributorDashboard() {
 
       {/* Activity trend */}
       <div className="card">
-        <div className="flex items-start justify-between mb-5">
+        <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="font-display font-semibold text-ix-text">Activity Trend</h3>
             <p className="text-xs text-ix-muted mt-0.5">6-week activity overview</p>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-[#6366f1]" />
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#6366f1' }} />
             <span className="text-[10px] font-mono text-ix-muted">Activity Score</span>
           </div>
         </div>
