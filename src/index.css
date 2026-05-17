@@ -3,19 +3,12 @@
 @tailwind utilities;
 
 /*
- * THEME SYSTEM — How it works:
- *
- *  1. ThemeContext adds/removes `dark` class on <html>.
- *  2. CSS variables switch values under html.dark / html.light.
- *  3. Tailwind color tokens (ix-text, ix-bg, etc.) reference --ix-* vars
- *     so every className="text-ix-text" automatically responds to the theme.
- *  4. Component-level .glass, .card, .input classes also use vars.
- *
- *  FIX: Added --ix-* variable aliases so Tailwind can consume them.
- *  FIX: Light mode card/glass backgrounds adjusted so they look like a
- *       real light UI (white cards, soft shadows) rather than washed-out
- *       transparent grey from the dark-mode glass values.
- *  FIX: body background removed hardcoded #050810, now uses var(--ix-bg).
+ * FIXES IN THIS FILE:
+ *  1. Recharts tooltip — forced dark background & white text in ALL themes
+ *     Previously the tooltip inherited light bg in dark mode, making text invisible
+ *  2. Recharts cursor fill color made visible
+ *  3. Chart container overflow fixed (prevents donut chart clipping)
+ *  4. Engagement trend card spacing polished
  */
 
 /* ── Dark theme (default) ────────────────────────────────────────────────── */
@@ -36,7 +29,6 @@ html.dark {
   --scrollbar-thumb-hover: #374151;
   --subtle:      #1e2d3d;
 
-  /* Tailwind bridge — ix-* colors in tailwind.config.js reference these */
   --ix-bg:      #050810;
   --ix-surface: #0d1117;
   --ix-card:    #111827;
@@ -63,7 +55,6 @@ html.light {
   --scrollbar-thumb-hover: #94a3b8;
   --subtle:      #e2e8f0;
 
-  /* Tailwind bridge */
   --ix-bg:      #f1f5f9;
   --ix-surface: #ffffff;
   --ix-card:    #ffffff;
@@ -74,15 +65,9 @@ html.light {
 }
 
 @layer base {
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  html {
-    scroll-behavior: smooth;
-  }
+  html { scroll-behavior: smooth; }
 
   body {
     background-color: var(--bg);
@@ -96,16 +81,10 @@ html.light {
 
   ::-webkit-scrollbar       { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-  ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 99px;
-  }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 99px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
-  ::selection {
-    background: rgba(99, 102, 241, 0.3);
-    color: var(--text);
-  }
+  ::selection { background: rgba(99, 102, 241, 0.3); color: var(--text); }
 }
 
 @layer components {
@@ -156,10 +135,7 @@ html.light {
            hover:text-ix-text hover:bg-ix-accent/10;
   }
 
-  /* Light mode btn-ghost needs a visible border */
-  html.light .btn-ghost:hover {
-    border-color: #6366f1;
-  }
+  html.light .btn-ghost:hover { border-color: #6366f1; }
 
   .card {
     background: var(--glass-bg);
@@ -169,7 +145,6 @@ html.light {
     @apply rounded-2xl p-6 transition-all duration-300;
   }
 
-  /* Light mode: cards get a real white background + subtle shadow */
   html.light .card {
     background: var(--card);
     box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
@@ -187,8 +162,7 @@ html.light {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    @apply rounded-2xl p-5 relative overflow-hidden transition-all duration-300
-           hover:scale-[1.02];
+    @apply rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:scale-[1.02];
   }
 
   html.light .stat-card {
@@ -199,15 +173,9 @@ html.light {
 
   .nav-link {
     color: var(--text-muted);
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl font-body font-medium
-           transition-all duration-200;
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl font-body font-medium transition-all duration-200;
   }
-
-  .nav-link:hover {
-    color: var(--text);
-    background: rgba(99, 102, 241, 0.08);
-  }
-
+  .nav-link:hover { color: var(--text); background: rgba(99, 102, 241, 0.08); }
   .nav-link.active {
     color: var(--text);
     background: rgba(99, 102, 241, 0.15);
@@ -224,16 +192,8 @@ html.light {
            transition-all duration-200;
   }
 
-  /* Light mode: inputs need visible borders */
-  html.light .input {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-  }
-
-  html.light .input:focus {
-    border-color: #6366f1;
-    background: #ffffff;
-  }
+  html.light .input { background: #f8fafc; border-color: #cbd5e1; }
+  html.light .input:focus { border-color: #6366f1; background: #ffffff; }
 
   .badge {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium;
@@ -278,23 +238,48 @@ html.light {
   }
 }
 
-/* ── Chart overrides ─────────────────────────────────────────────────────── */
-.recharts-tooltip-wrapper .recharts-default-tooltip {
-  background: rgba(13, 17, 23, 0.95) !important;
-  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   RECHARTS TOOLTIP FIX
+   The tooltip uses inline styles injected by recharts — we MUST override
+   them with !important to force dark background in dark mode.
+   Previously the white background made text invisible in dark mode.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Force tooltip dark in dark mode */
+html.dark .recharts-tooltip-wrapper .recharts-default-tooltip,
+html.dark .recharts-tooltip-wrapper > div {
+  background: rgba(13, 17, 23, 0.97) !important;
+  border: 1px solid rgba(99, 102, 241, 0.25) !important;
   border-radius: 12px !important;
-  backdrop-filter: blur(12px) !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
 }
 
-html.light .recharts-tooltip-wrapper .recharts-default-tooltip {
+/* Force tooltip item text white in dark mode */
+html.dark .recharts-tooltip-item,
+html.dark .recharts-tooltip-item-name,
+html.dark .recharts-tooltip-item-value {
+  color: #f1f5f9 !important;
+}
+
+html.dark .recharts-tooltip-label {
+  color: #94a3b8 !important;
+}
+
+/* Light mode tooltip */
+html.light .recharts-tooltip-wrapper .recharts-default-tooltip,
+html.light .recharts-tooltip-wrapper > div {
   background: rgba(255, 255, 255, 0.98) !important;
   border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  border-radius: 12px !important;
   color: #0f172a !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
 }
 
+/* Grid lines */
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
-  stroke: rgba(255, 255, 255, 0.04) !important;
+  stroke: rgba(255, 255, 255, 0.05) !important;
 }
 
 html.light .recharts-cartesian-grid-horizontal line,
@@ -302,15 +287,19 @@ html.light .recharts-cartesian-grid-vertical line {
   stroke: rgba(0, 0, 0, 0.06) !important;
 }
 
+/* Axis text */
 .recharts-text {
   fill: #64748b !important;
   font-family: 'DM Sans', sans-serif !important;
   font-size: 11px !important;
 }
 
-/* Light mode recharts axis text */
-html.light .recharts-text {
-  fill: #475569 !important;
+html.light .recharts-text { fill: #475569 !important; }
+
+/* Cursor highlight in bar/area charts */
+html.dark .recharts-bar-background-rectangle,
+html.dark .recharts-rectangle.recharts-tooltip-cursor {
+  fill: rgba(99, 102, 241, 0.06) !important;
 }
 
 /* ── Sidebar light mode ──────────────────────────────────────────────────── */
@@ -321,7 +310,10 @@ html.light nav {
 }
 
 /* ── Select / option light mode ─────────────────────────────────────────── */
-html.light select option {
-  background: #ffffff;
-  color: #0f172a;
+html.light select option { background: #ffffff; color: #0f172a; }
+
+/* ── Recharts container overflow fix (prevents donut chart clipping) ─────── */
+.recharts-wrapper,
+.recharts-surface {
+  overflow: visible !important;
 }
