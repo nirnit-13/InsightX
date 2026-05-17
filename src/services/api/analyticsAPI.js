@@ -2,12 +2,11 @@
  * src/services/api/analyticsAPI.js
  *
  * FIXES:
- *  1. Leaderboard always merges real API contributors WITH the original mock
- *     contributors — neither set ever disappears.
- *  2. New contributors from the API get simulated stats (via simulateContributorStats)
- *     so they appear properly ranked alongside old contributors.
- *  3. getMyStats / getMyAnalytics returns personal mock data keyed to
- *     the logged-in user from localStorage so contributor dashboard works.
+ *  1. Leaderboard now fetches ONLY from the real backend — deleted contributors
+ *     no longer ghost-persist from the mock list merge.
+ *  2. Mock data is used ONLY as a fallback when the backend is unreachable.
+ *  3. getMyStats / getMyAnalytics still falls back to mock for the logged-in
+ *     user's own data when the backend is unavailable.
  */
 
 import client from './client'
@@ -16,8 +15,6 @@ import {
   TASKS,
   WEEKLY_ACTIVITY,
   TEAM_DISTRIBUTION,
-  mergeContributors,
-  simulateContributorStats,
 } from '../../data/mockData'
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -39,7 +36,7 @@ function storedUser() {
   }
 }
 
-// ── mock payloads ──────────────────────────────────────────────────────────
+// ── mock payloads (fallback only) ──────────────────────────────────────────
 function mockOverview() {
   const total      = CONTRIBUTORS.length
   const active     = CONTRIBUTORS.filter(c => c.streak > 0).length
@@ -54,22 +51,20 @@ function mockOverview() {
     CONTRIBUTORS.reduce((s, c) => s + (c.productivity_score || 0), 0) / total
   )
   return {
-    total_contributors:  total,
-    active_users:        active,
-    task_completion_rate: completed
-      ? Math.round((completed / allTasks.length) * 100)
-      : 0,
-    engagement_score:    avgProd,
-    weekly_productivity: avgProd,
-    attendance_avg:      avgAttend,
-    in_progress_tasks:   inProgress,
-    pending_tasks:       pending,
-    total_tasks:         allTasks.length,
+    total_contributors:   total,
+    active_users:         active,
+    task_completion_rate: completed ? Math.round((completed / allTasks.length) * 100) : 0,
+    engagement_score:     avgProd,
+    weekly_productivity:  avgProd,
+    attendance_avg:       avgAttend,
+    in_progress_tasks:    inProgress,
+    pending_tasks:        pending,
+    total_tasks:          allTasks.length,
   }
 }
 
 function mockMyStats() {
-  const u = storedUser()
+  const u  = storedUser()
   const me = CONTRIBUTORS.find(c => c.email === u.email) || CONTRIBUTORS[1]
   const myTasks   = TASKS.filter(t => t.assigned_to === me.id)
   const completed = myTasks.filter(t => t.status === 'completed').length
@@ -88,40 +83,6 @@ function mockMyStats() {
   }
 }
 
-/**
- * Build a merged leaderboard from both the real API and the original mock
- * contributors.  Real API contributors that aren't in the mock list get
- * simulated stats added.  The mock list is always included.
- */
-async function buildMergedLeaderboard() {
-  let apiContributors = []
-  try {
-    apiContributors = await client.get('/analytics/leaderboard')
-    if (!Array.isArray(apiContributors)) apiContributors = []
-  } catch {
-    // backend unavailable — proceed with mock only
-  }
-
-  // mergeContributors deduplicates by email, mock list wins for original users
-  const merged = mergeContributors(apiContributors)
-  return merged.sort((a, b) => (b.productivity_score || 0) - (a.productivity_score || 0))
-}
-
-/**
- * Build a merged contributors list for admin /contributors/ view.
- * Combines real API list + original mock contributors.
- */
-async function buildMergedContributors() {
-  let apiContributors = []
-  try {
-    apiContributors = await client.get('/contributors/')
-    if (!Array.isArray(apiContributors)) apiContributors = []
-  } catch {
-    // backend unavailable
-  }
-  return mergeContributors(apiContributors)
-}
-
 // ── API object ─────────────────────────────────────────────────────────────
 export const analyticsAPI = {
   /** Admin: organization-wide overview stats */
@@ -136,10 +97,24 @@ export const analyticsAPI = {
     }),
 
   /**
-   * UPDATED: Leaderboard merges real API + all original mock contributors.
-   * New users added via the UI appear alongside original contributors.
+   * Leaderboard — fetches ONLY from the real backend.
+   * Falls back to mock ONLY when the server is completely unreachable.
+   * This ensures deleted contributors are not shown.
    */
-  getLeaderboard: () => buildMergedLeaderboard(),
+  getLeaderboard: async () => {
+    try {
+      const data = await client.get('/analytics/leaderboard')
+      if (Array.isArray(data) && data.length > 0) return data
+      // Empty array from backend means no users yet — show mock as placeholder
+      return CONTRIBUTORS
+    } catch (err) {
+      const status = err?.response?.status
+      // 403/401 = auth issue, not "no data" — don't show mock for auth errors
+      if (status === 401 || status === 403) throw err
+      // Network/server error → fall back to mock
+      return CONTRIBUTORS
+    }
+  },
 
   /** Health score (admin) */
   getHealthScore: () =>
@@ -156,7 +131,4 @@ export const analyticsAPI = {
   /** Alias used by useMyStats() hook */
   getMyStats: () =>
     safeCall(() => client.get('/analytics/me'), mockMyStats()),
-
-  /** All contributors merged (for admin views) */
-  getAllContributors: () => buildMergedContributors(),
 }

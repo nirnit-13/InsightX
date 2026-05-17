@@ -6,6 +6,7 @@ venv/
 .env
 .env.local
 server/.env
+server/.env.local
 
 # python cache
 __pycache__/
@@ -27,3 +28,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# seed script — delete after use, never commit
+seed_db.py
