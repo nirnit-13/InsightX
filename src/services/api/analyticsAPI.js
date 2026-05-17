@@ -2,11 +2,12 @@
  * src/services/api/analyticsAPI.js
  *
  * FIXES:
- *  1. Added mock fallback — when the real API returns 403/404 or is
- *     unavailable, returns mock data so the dashboard never shows zeroes.
- *  2. getMyStats / getMyAnalytics returns personal mock data keyed to
+ *  1. Leaderboard always merges real API contributors WITH the original mock
+ *     contributors — neither set ever disappears.
+ *  2. New contributors from the API get simulated stats (via simulateContributorStats)
+ *     so they appear properly ranked alongside old contributors.
+ *  3. getMyStats / getMyAnalytics returns personal mock data keyed to
  *     the logged-in user from localStorage so contributor dashboard works.
- *  3. getLeaderboard falls back to CONTRIBUTORS mock data.
  */
 
 import client from './client'
@@ -15,12 +16,13 @@ import {
   TASKS,
   WEEKLY_ACTIVITY,
   TEAM_DISTRIBUTION,
+  mergeContributors,
+  simulateContributorStats,
 } from '../../data/mockData'
 
 // ── helpers ────────────────────────────────────────────────────────────────
 function safeCall(apiFn, fallback) {
   return apiFn().catch(err => {
-    // 403 = wrong role, 404 = endpoint missing, network = backend down
     const status = err?.response?.status
     if (!status || status === 403 || status === 404 || status >= 500) {
       return fallback
@@ -68,7 +70,6 @@ function mockOverview() {
 
 function mockMyStats() {
   const u = storedUser()
-  // Find this user in mock contributors (match by email)
   const me = CONTRIBUTORS.find(c => c.email === u.email) || CONTRIBUTORS[1]
   const myTasks   = TASKS.filter(t => t.assigned_to === me.id)
   const completed = myTasks.filter(t => t.status === 'completed').length
@@ -82,21 +83,43 @@ function mockMyStats() {
     in_progress_tasks:  inProg,
     pending_tasks:      pend,
     total_tasks:        myTasks.length,
-    xp:                 me.completed_tasks * 50 || 0,
+    xp:                 (me.completed_tasks || 0) * 50,
     badges:             me.streak > 7 ? ['🔥 On Fire', '⭐ Consistent'] : [],
   }
 }
 
-function mockLeaderboard() {
-  return [...CONTRIBUTORS]
-    .sort((a, b) => (b.productivity_score || 0) - (a.productivity_score || 0))
-    .map((c, i) => ({ ...c, rank: i + 1 }))
+/**
+ * Build a merged leaderboard from both the real API and the original mock
+ * contributors.  Real API contributors that aren't in the mock list get
+ * simulated stats added.  The mock list is always included.
+ */
+async function buildMergedLeaderboard() {
+  let apiContributors = []
+  try {
+    apiContributors = await client.get('/analytics/leaderboard')
+    if (!Array.isArray(apiContributors)) apiContributors = []
+  } catch {
+    // backend unavailable — proceed with mock only
+  }
+
+  // mergeContributors deduplicates by email, mock list wins for original users
+  const merged = mergeContributors(apiContributors)
+  return merged.sort((a, b) => (b.productivity_score || 0) - (a.productivity_score || 0))
 }
 
-function mockMyTasks() {
-  const u  = storedUser()
-  const me = CONTRIBUTORS.find(c => c.email === u.email) || CONTRIBUTORS[1]
-  return TASKS.filter(t => t.assigned_to === me.id)
+/**
+ * Build a merged contributors list for admin /contributors/ view.
+ * Combines real API list + original mock contributors.
+ */
+async function buildMergedContributors() {
+  let apiContributors = []
+  try {
+    apiContributors = await client.get('/contributors/')
+    if (!Array.isArray(apiContributors)) apiContributors = []
+  } catch {
+    // backend unavailable
+  }
+  return mergeContributors(apiContributors)
 }
 
 // ── API object ─────────────────────────────────────────────────────────────
@@ -112,9 +135,11 @@ export const analyticsAPI = {
       team:   TEAM_DISTRIBUTION,
     }),
 
-  /** All authenticated users: ranked leaderboard */
-  getLeaderboard: () =>
-    safeCall(() => client.get('/analytics/leaderboard'), mockLeaderboard()),
+  /**
+   * UPDATED: Leaderboard merges real API + all original mock contributors.
+   * New users added via the UI appear alongside original contributors.
+   */
+  getLeaderboard: () => buildMergedLeaderboard(),
 
   /** Health score (admin) */
   getHealthScore: () =>
@@ -124,15 +149,14 @@ export const analyticsAPI = {
   getHeatmap: (id) =>
     safeCall(() => client.get(`/analytics/heatmap${id ? `?user_id=${id}` : ''}`), []),
 
-  /**
-   * Personal analytics for the authenticated contributor.
-   * Falls back to mock data derived from storedUser() so contributor
-   * dashboard always has real-looking numbers even without a backend.
-   */
+  /** Personal analytics for the authenticated contributor */
   getMyAnalytics: () =>
     safeCall(() => client.get('/analytics/me'), mockMyStats()),
 
   /** Alias used by useMyStats() hook */
   getMyStats: () =>
     safeCall(() => client.get('/analytics/me'), mockMyStats()),
+
+  /** All contributors merged (for admin views) */
+  getAllContributors: () => buildMergedContributors(),
 }

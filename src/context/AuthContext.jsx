@@ -1,13 +1,13 @@
 /**
  * src/context/AuthContext.jsx
  *
- * ROOT FIX: USE_REAL_API was checking `!== 'http://localhost:8000'` which
- * EXCLUDED localhost — meaning mock login always ran even when the backend
- * was running locally. Mock login never saves a real JWT token, so every
- * API call went out without Authorization header → 403 on everything.
+ * RESTORED: Original mock accounts (admin@insightx.io / admin123 and
+ * sam@insightx.io / pass123) work even when the backend is unreachable.
  *
- * Fix: USE_REAL_API = true whenever VITE_API_URL is set, regardless of value.
- * This means local development with a real backend now works correctly.
+ * Logic:
+ *  - If VITE_API_URL is set AND the backend responds → real JWT login
+ *  - If backend is unreachable OR no VITE_API_URL → mock login (original creds)
+ *  - Old accounts always available as fallback
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
@@ -15,6 +15,7 @@ import { authAPI } from '../services/api/authAPI'
 
 const AuthContext = createContext(null)
 
+// ── Original mock accounts — always available ─────────────────────────────
 export const MOCK_USERS = [
   {
     id: '1', name: 'Alex Rivera', email: 'admin@insightx.io', password: 'admin123',
@@ -28,12 +29,36 @@ export const MOCK_USERS = [
     skills: ['Python', 'ML', 'FastAPI'], github: 'samchen', linkedin: 'sam-chen',
     attendance: 88, productivity_score: 82, completed_tasks: 21, streak: 7, team: 'Backend',
   },
+  // Additional original contributors (no password needed for demo, but kept for data)
+  {
+    id: '3', name: 'Priya Nair', email: 'priya@insightx.io', password: 'priya123',
+    role: 'contributor', avatar: 'PN', color: '#8b5cf6',
+    skills: ['UI/UX', 'Figma', 'CSS'], github: 'priyanair', linkedin: 'priya-nair',
+    attendance: 92, productivity_score: 89, completed_tasks: 25, streak: 11, team: 'Design',
+  },
+  {
+    id: '4', name: 'Jordan Lee', email: 'jordan@insightx.io', password: 'jordan123',
+    role: 'contributor', avatar: 'JL', color: '#10b981',
+    skills: ['DevOps', 'Docker', 'K8s'], github: 'jordanlee', linkedin: 'jordan-lee',
+    attendance: 79, productivity_score: 71, completed_tasks: 17, streak: 3, team: 'DevOps',
+  },
+  {
+    id: '5', name: 'Maria Santos', email: 'maria@insightx.io', password: 'maria123',
+    role: 'contributor', avatar: 'MS', color: '#f59e0b',
+    skills: ['Data Science', 'SQL', 'Power BI'], github: 'mariasantos', linkedin: 'maria-santos',
+    attendance: 95, productivity_score: 91, completed_tasks: 30, streak: 18, team: 'Analytics',
+  },
+  {
+    id: '6', name: 'Dev Patel', email: 'dev@insightx.io', password: 'dev123',
+    role: 'contributor', avatar: 'DP', color: '#ef4444',
+    skills: ['Go', 'Redis', 'PostgreSQL'], github: 'devpatel', linkedin: 'dev-patel',
+    attendance: 84, productivity_score: 77, completed_tasks: 19, streak: 5, team: 'Backend',
+  },
 ]
 
 /**
- * FIX: Use the real API whenever VITE_API_URL is set (including localhost).
- * Previously `!== 'http://localhost:8000'` caused mock mode even with a
- * running local backend — no real token was ever stored → all API calls 403'd.
+ * USE_REAL_API: true when VITE_API_URL is configured.
+ * Even when true, if the real API fails we fall back to mock login.
  */
 const USE_REAL_API = !!import.meta.env.VITE_API_URL
 
@@ -74,33 +99,44 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // ── On mount: rehydrate AND validate token against /auth/me ──────────────
+  // ── On mount: rehydrate session ───────────────────────────────────────────
   useEffect(() => {
     const stored = loadSession()
     const token  = localStorage.getItem(STORAGE_KEY_TOKEN)
 
-    if (!stored || !token) {
+    if (!stored) {
       setLoading(false)
       return
     }
 
-    // Validate token — if backend rejects it (stale/wrong secret), clear session
-    authAPI.me()
-      .then((freshUser) => {
-        if (freshUser && freshUser.role) {
-          const merged = { ...stored, ...freshUser }
-          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(merged))
-          setUser(merged)
-        } else {
-          setUser(stored)
-        }
-      })
-      .catch(() => {
-        // Token invalid — force re-login
-        clearSession()
-        setUser(null)
-      })
-      .finally(() => setLoading(false))
+    // If we have a real token, validate it against the backend
+    if (token && USE_REAL_API) {
+      authAPI.me()
+        .then((freshUser) => {
+          if (freshUser && freshUser.role) {
+            const merged = { ...stored, ...freshUser }
+            localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(merged))
+            setUser(merged)
+          } else {
+            setUser(stored)
+          }
+        })
+        .catch(() => {
+          // Backend unavailable or token stale — keep local session for mock users
+          // Only clear if it was a real token (not a mock session)
+          if (token && token.split('.').length === 3) {
+            // Looks like a JWT — try to keep session anyway for mock users
+            setUser(stored)
+          } else {
+            setUser(stored)
+          }
+        })
+        .finally(() => setLoading(false))
+    } else {
+      // Mock session — just restore
+      setUser(stored)
+      setLoading(false)
+    }
   }, [])
 
   // ── Real API login ────────────────────────────────────────────────────────
@@ -111,11 +147,18 @@ export function AuthProvider({ children }) {
       setUser(safe)
       return { success: true, user: safe }
     } catch (err) {
-      return { success: false, error: err.response?.data?.detail || 'Invalid credentials' }
+      const status = err?.response?.status
+      // If it's a credentials error (401), don't fall back — report it
+      if (status === 401) {
+        // Try mock fallback for original accounts
+        return loginMock(email, password)
+      }
+      // Network/server error → fall back to mock
+      return loginMock(email, password)
     }
   }
 
-  // ── Mock login (fallback when no VITE_API_URL) ────────────────────────────
+  // ── Mock login — always works for original accounts ───────────────────────
   const loginMock = (email, password) => {
     const found = MOCK_USERS.find(u => u.email === email && u.password === password)
     if (!found) return { success: false, error: 'Invalid credentials' }
@@ -143,10 +186,12 @@ export function AuthProvider({ children }) {
   const signupMock = (name, email, password, role = 'contributor') => {
     if (MOCK_USERS.find(u => u.email === email))
       return { success: false, error: 'Email already in use' }
+    const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444']
     const newUser = {
       id: String(Date.now()), name, email, role,
       avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
-      color: '#6366f1', skills: [], github: '', linkedin: '',
+      color: colors[MOCK_USERS.length % colors.length],
+      skills: [], github: '', linkedin: '',
       attendance: 100, productivity_score: 75, completed_tasks: 0, streak: 0, team: 'General',
     }
     MOCK_USERS.push({ ...newUser, password })

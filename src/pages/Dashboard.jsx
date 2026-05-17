@@ -2,11 +2,10 @@
  * src/pages/Dashboard.jsx
  *
  * FIXES:
- *  1. Team Split legend bars use border color from CSS var — visible in light mode
- *  2. Engagement Trend fully redesigned — clean metrics + chart, no bad layout
- *  3. All `bg-white/5`, `bg-white/3` replaced with theme-aware CSS var equivalents
- *  4. Chart text (axis, legend) now theme-aware via Charts.jsx fix
- *  5. hover:bg-white/3 → hover:bg-ix-subtle/30 so hover states work in light mode
+ *  1. Engagement Trend box properly redesigned — pills visible in both themes
+ *  2. All `bg-white/5`, `bg-white/3` replaced with theme-aware equivalents
+ *  3. Admin overview merges real API stats with mock data totals
+ *  4. Contributor dashboard uses personal mock data as fallback
  */
 
 import { motion } from 'framer-motion'
@@ -30,7 +29,6 @@ import {
 import {
   RiTeamLine, RiTaskLine, RiBarChartBoxLine, RiFlashlightLine,
   RiFireLine, RiCalendarLine, RiCheckboxCircleLine, RiTimeLine, RiStarLine,
-  RiArrowUpLine, RiArrowDownLine,
 } from 'react-icons/ri'
 
 const weeklyFallback = WEEKLY_ACTIVITY.map(d => ({
@@ -40,6 +38,12 @@ const weeklyFallback = WEEKLY_ACTIVITY.map(d => ({
 const engageFallback = ENGAGEMENT_TREND.map(d => ({
   name: d.week, Engagement: d.engagement, Retention: d.retention,
 }))
+
+// ── Latest engagement / retention values ──────────────────────────────────
+const latestEngage  = engageFallback[engageFallback.length - 1]?.Engagement ?? 0
+const latestRetain  = engageFallback[engageFallback.length - 1]?.Retention  ?? 0
+const prevEngage    = engageFallback[engageFallback.length - 2]?.Engagement ?? 0
+const prevRetain    = engageFallback[engageFallback.length - 2]?.Retention  ?? 0
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ADMIN DASHBOARD
@@ -61,7 +65,6 @@ function AdminDashboard() {
     })),
   }
 
-  // Team total for percentage calculation
   const teamTotal = TEAM_DISTRIBUTION.reduce((a, b) => a + b.value, 0)
 
   return (
@@ -95,8 +98,8 @@ function AdminDashboard() {
       {/* Progress metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Active Users',   value: stats?.active_users      ?? 0, max: stats?.total_contributors ?? 10, color: '#6366f1' },
-          { label: 'Avg Attendance', value: stats?.attendance_avg    ?? 0, max: 100,                             color: '#10b981', suffix: '%' },
+          { label: 'Active Users',   value: stats?.active_users      ?? 0, max: Math.max(stats?.total_contributors ?? 10, 1), color: '#6366f1' },
+          { label: 'Avg Attendance', value: stats?.attendance_avg    ?? 0, max: 100, color: '#10b981', suffix: '%' },
           { label: 'In Progress',    value: stats?.in_progress_tasks ?? 0, max: Math.max(stats?.total_tasks ?? 10, 1), color: '#06b6d4' },
           { label: 'Pending Tasks',  value: stats?.pending_tasks     ?? 0, max: Math.max(stats?.total_tasks ?? 10, 1), color: '#f59e0b' },
         ].map((s, i) => (
@@ -118,7 +121,7 @@ function AdminDashboard() {
         ))}
       </div>
 
-      {/* ── Charts row 1: Weekly Activity + Team Split ── */}
+      {/* Charts row 1: Weekly Activity + Team Split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* Weekly Activity */}
@@ -158,27 +161,19 @@ function AdminDashboard() {
             <h3 className="font-display font-semibold text-ix-text">Team Split</h3>
             <p className="text-xs text-ix-muted mt-0.5">By contribution area</p>
           </div>
-
-          {/* Donut chart */}
           <div style={{ height: '180px' }}>
             <DonutChart data={TEAM_DISTRIBUTION} height={180} />
           </div>
-
-          {/* FIX: Legend uses border instead of bg-white/5 — visible in both themes */}
           <div className="mt-3 space-y-2">
             {TEAM_DISTRIBUTION.map(t => {
               const pct = Math.round((t.value / teamTotal) * 100)
               return (
                 <div key={t.name} className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: t.color }}
-                    />
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
                     <span className="text-xs text-ix-muted truncate">{t.name}</span>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* FIX: use border + colored fill instead of bg-white/5 */}
                     <div
                       className="w-16 h-1.5 rounded-full overflow-hidden"
                       style={{ backgroundColor: 'var(--border-solid)' }}
@@ -197,54 +192,64 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* ── Charts row 2: Engagement Trend + AI Insights ── */}
+      {/* Charts row 2: Engagement Trend + AI Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        {/* Engagement Trend — clean redesign */}
+        {/* ── Engagement Trend — FIXED ── */}
         <div className="card">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h3 className="font-display font-semibold text-ix-text">Engagement Trend</h3>
-              <p className="text-xs text-ix-muted mt-0.5">6-week engagement & retention</p>
+          <div className="mb-4">
+            <h3 className="font-display font-semibold text-ix-text">Engagement Trend</h3>
+            <p className="text-xs text-ix-muted mt-0.5">6-week engagement & retention</p>
+          </div>
+
+          {/* Metric pills — use explicit hex backgrounds so they work in both themes */}
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.22)' }}>
+              <div className="flex items-baseline gap-1.5 mb-0.5">
+                <span className="text-2xl font-display font-bold" style={{ color: '#8b5cf6' }}>
+                  {latestEngage}
+                </span>
+                <span
+                  className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded"
+                  style={{
+                    color: latestEngage >= prevEngage ? '#10b981' : '#ef4444',
+                    backgroundColor: latestEngage >= prevEngage ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                  }}
+                >
+                  {latestEngage >= prevEngage ? '↑' : '↓'}{Math.abs(latestEngage - prevEngage)}
+                </span>
+              </div>
+              <p className="text-[11px] text-ix-muted">Engagement score</p>
             </div>
-            {/* Legend */}
-            <div className="flex flex-col gap-1.5 items-end">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#8b5cf6' }} />
-                <span className="text-[10px] font-mono text-ix-muted">Engagement</span>
+
+            <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(6,182,212,0.10)', border: '1px solid rgba(6,182,212,0.22)' }}>
+              <div className="flex items-baseline gap-1.5 mb-0.5">
+                <span className="text-2xl font-display font-bold" style={{ color: '#06b6d4' }}>
+                  {latestRetain}%
+                </span>
+                <span
+                  className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded"
+                  style={{
+                    color: latestRetain >= prevRetain ? '#10b981' : '#ef4444',
+                    backgroundColor: latestRetain >= prevRetain ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                  }}
+                >
+                  {latestRetain >= prevRetain ? '↑' : '↓'}{Math.abs(latestRetain - prevRetain)}
+                </span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#06b6d4' }} />
-                <span className="text-[10px] font-mono text-ix-muted">Retention</span>
-              </div>
+              <p className="text-[11px] text-ix-muted">Retention rate</p>
             </div>
           </div>
 
-          {/* FIX: Metric pills use border-based styling — visible in both themes */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div
-              className="rounded-xl p-3"
-              style={{
-                backgroundColor: 'rgba(139,92,246,0.08)',
-                border: '1px solid rgba(139,92,246,0.2)',
-              }}
-            >
-              <p className="text-xl font-display font-bold" style={{ color: '#8b5cf6' }}>
-                {engageFallback[engageFallback.length - 1]?.Engagement ?? 0}
-              </p>
-              <p className="text-[10px] text-ix-muted mt-0.5">Current engagement</p>
+          {/* Legend */}
+          <div className="flex items-center gap-4 mb-3">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#8b5cf6' }} />
+              <span className="text-[10px] font-mono text-ix-muted">Engagement</span>
             </div>
-            <div
-              className="rounded-xl p-3"
-              style={{
-                backgroundColor: 'rgba(6,182,212,0.08)',
-                border: '1px solid rgba(6,182,212,0.2)',
-              }}
-            >
-              <p className="text-xl font-display font-bold" style={{ color: '#06b6d4' }}>
-                {engageFallback[engageFallback.length - 1]?.Retention ?? 0}%
-              </p>
-              <p className="text-[10px] text-ix-muted mt-0.5">Retention rate</p>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#06b6d4' }} />
+              <span className="text-[10px] font-mono text-ix-muted">Retention</span>
             </div>
           </div>
 
@@ -254,7 +259,7 @@ function AdminDashboard() {
               { key: 'Engagement', color: '#8b5cf6', label: 'Engagement' },
               { key: 'Retention',  color: '#06b6d4', label: 'Retention' },
             ]}
-            height={150}
+            height={140}
           />
         </div>
 
@@ -262,7 +267,7 @@ function AdminDashboard() {
         <AIRecommendationsPanel context={adminContext} title="AI Insights" maxItems={3} />
       </div>
 
-      {/* ── Bottom row: Top Performers + Live feed ── */}
+      {/* Bottom row: Top Performers + Live feed */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Top Performers */}
@@ -281,12 +286,11 @@ function AdminDashboard() {
               ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)
               : (board || []).slice(0, 5).map((c, i) => (
                 <motion.div
-                  key={c.id || i}
+                  key={c.id || c.email || i}
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07 }}
                   className="flex items-center gap-3 p-2.5 rounded-xl transition-all"
-                  style={{ ':hover': { backgroundColor: 'var(--glass-light-bg)' } }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--glass-light-bg)'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
@@ -295,18 +299,18 @@ function AdminDashboard() {
                       : <span className="font-mono text-ix-muted text-xs">#{i + 1}</span>}
                   </div>
                   <Avatar
-                    initials={c.avatar || c.name?.slice(0, 2).toUpperCase()}
+                    initials={c.avatar || (c.name || '??').slice(0, 2).toUpperCase()}
                     color={c.color || '#6366f1'}
                     size="sm"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-display font-semibold text-ix-text truncate">{c.name}</p>
-                    <p className="text-xs text-ix-muted">{c.team}</p>
+                    <p className="text-xs text-ix-muted">{c.team || 'General'}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-display font-bold text-ix-text">{c.productivity_score}</p>
+                    <p className="text-sm font-display font-bold text-ix-text">{c.productivity_score ?? 0}</p>
                     <div className="w-16 mt-1">
-                      <ProgressBar value={c.productivity_score} max={100} color={c.color || '#6366f1'} height={3} />
+                      <ProgressBar value={c.productivity_score ?? 0} max={100} color={c.color || '#6366f1'} height={3} />
                     </div>
                   </div>
                 </motion.div>
@@ -360,10 +364,10 @@ function ContributorDashboard() {
 
       {/* Personal KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Productivity Score" value={myStats?.productivity_score ?? user?.productivity_score ?? 75} icon={RiFlashlightLine} color="#6366f1" />
-        <StatCard label="Tasks Completed"    value={myStats?.completed_tasks ?? done}                             icon={RiCheckboxCircleLine} color="#10b981" />
-        <StatCard label="Current Streak"     value={myStats?.streak ?? user?.streak ?? 0}   suffix="d"           icon={RiFireLine}  color="#f59e0b" />
-        <StatCard label="Attendance"         value={myStats?.attendance ?? user?.attendance ?? 90} suffix="%"     icon={RiStarLine}  color="#8b5cf6" />
+        <StatCard label="Productivity Score" value={myStats?.productivity_score ?? user?.productivity_score ?? 75} icon={RiFlashlightLine}      color="#6366f1" />
+        <StatCard label="Tasks Completed"    value={myStats?.completed_tasks ?? done}                             icon={RiCheckboxCircleLine}  color="#10b981" />
+        <StatCard label="Current Streak"     value={myStats?.streak ?? user?.streak ?? 0} suffix="d"             icon={RiFireLine}            color="#f59e0b" />
+        <StatCard label="Attendance"         value={myStats?.attendance ?? user?.attendance ?? 90} suffix="%"     icon={RiStarLine}            color="#8b5cf6" />
       </div>
 
       {/* Task breakdown */}
@@ -418,7 +422,6 @@ function ContributorDashboard() {
               <div
                 key={t.id}
                 className="flex items-center gap-3 p-3 rounded-xl transition-all"
-                style={{ border: '1px solid transparent' }}
                 onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--glass-light-bg)'}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
               >

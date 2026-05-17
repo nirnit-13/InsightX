@@ -1,4 +1,5 @@
 // Mock data for InsightX — simulates backend responses
+// These are the ORIGINAL built-in contributors and tasks that always exist
 
 export const CONTRIBUTORS = [
   { id: '1', name: 'Alex Rivera', email: 'alex@insightx.io', role: 'admin', avatar: 'AR', color: '#6366f1', skills: ['React', 'Node.js', 'TypeScript'], github: 'alexrivera', linkedin: 'alex-rivera', attendance: 96, productivity_score: 94, completed_tasks: 28, streak: 14, team: 'Frontend', joined: '2024-01-15' },
@@ -121,3 +122,69 @@ export const AI_INSIGHTS_CACHE = [
     timestamp: new Date(Date.now() - 18000000).toISOString(),
   },
 ]
+
+// ── Dynamic simulation helpers for ANY contributor (old + new) ─────────────
+
+const COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']
+
+/** Generate simulated stats for a contributor that doesn't exist in CONTRIBUTORS[] */
+export function simulateContributorStats(contributor) {
+  // Use a deterministic seed from the email so stats are stable per refresh
+  const seed = (contributor.email || contributor.name || '')
+    .split('')
+    .reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+
+  const pseudo = (offset = 0) => ((seed + offset) * 2654435761) % 100
+
+  return {
+    productivity_score: contributor.productivity_score ?? (60 + (pseudo(1) % 35)),
+    attendance:         contributor.attendance         ?? (75 + (pseudo(2) % 20)),
+    completed_tasks:    contributor.completed_tasks    ?? (pseudo(3) % 20),
+    streak:             contributor.streak             ?? (pseudo(4) % 12),
+    color:              contributor.color              ?? COLORS[seed % COLORS.length],
+    avatar:             contributor.avatar             ??
+      (contributor.name || '??').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2),
+    team:               contributor.team              ?? 'General',
+    skills:             contributor.skills            ?? [],
+  }
+}
+
+/**
+ * Merge the fixed CONTRIBUTORS array with any extra contributors
+ * (e.g. from the real API or local state).  The fixed list always wins
+ * when there's an email collision.
+ */
+export function mergeContributors(apiContributors = []) {
+  const byEmail = new Map(CONTRIBUTORS.map(c => [c.email, c]))
+  for (const c of apiContributors) {
+    if (!byEmail.has(c.email)) {
+      byEmail.set(c.email, { ...simulateContributorStats(c), ...c })
+    }
+  }
+  return Array.from(byEmail.values())
+}
+
+/**
+ * Build a live activity event for any contributor (old or new).
+ */
+const ACTIONS = [
+  'pushed 3 commits to main',
+  'completed a task',
+  'approved a pull request',
+  'started a new task',
+  'left a code review comment',
+  'deployed to staging',
+  'created a new task',
+  'updated task status',
+]
+
+export function generateActivityEvent(contributor) {
+  const icons = ['📦', '✅', '🔍', '👋', '💬', '🚀', '📋', '🔄']
+  const idx   = Math.floor(Math.random() * ACTIONS.length)
+  return {
+    icon:      icons[idx],
+    actor:     contributor.name,
+    action:    ACTIONS[idx],
+    timestamp: new Date().toISOString(),
+  }
+}
