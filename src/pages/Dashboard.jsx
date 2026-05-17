@@ -6,6 +6,8 @@
  *  2. All `bg-white/5`, `bg-white/3` replaced with theme-aware equivalents
  *  3. Admin overview merges real API stats with mock data totals
  *  4. Contributor dashboard uses personal mock data as fallback
+ *  5. Weekly Activity chart height increased to fill card properly (no empty space)
+ *  6. Engagement Trend card tightened — reduced gap/padding, chart expanded to fill
  */
 
 import { motion } from 'framer-motion'
@@ -124,9 +126,9 @@ function AdminDashboard() {
       {/* Charts row 1: Weekly Activity + Team Split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-        {/* Weekly Activity */}
-        <div className="lg:col-span-2 card">
-          <div className="flex items-center justify-between mb-5">
+        {/* Weekly Activity — chart height increased to fill card */}
+        <div className="lg:col-span-2 card flex flex-col">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-display font-semibold text-ix-text">Weekly Activity</h3>
               <p className="text-xs text-ix-muted mt-0.5">Commits, tasks & code reviews</p>
@@ -144,15 +146,18 @@ function AdminDashboard() {
               ))}
             </div>
           </div>
-          <ActivityBarChart
-            data={weeklyFallback}
-            bars={[
-              { key: 'Commits', color: '#6366f1' },
-              { key: 'Tasks',   color: '#06b6d4' },
-              { key: 'Reviews', color: '#10b981' },
-            ]}
-            height={200}
-          />
+          {/* flex-1 + min-h ensures the chart stretches to fill remaining card height */}
+          <div className="flex-1 min-h-0">
+            <ActivityBarChart
+              data={weeklyFallback}
+              bars={[
+                { key: 'Commits', color: '#6366f1' },
+                { key: 'Tasks',   color: '#06b6d4' },
+                { key: 'Reviews', color: '#10b981' },
+              ]}
+              height={260}
+            />
+          </div>
         </div>
 
         {/* Team Split */}
@@ -195,16 +200,17 @@ function AdminDashboard() {
       {/* Charts row 2: Engagement Trend + AI Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        {/* ── Engagement Trend — FIXED ── */}
-        <div className="card">
-          <div className="mb-5">
+        {/* ── Engagement Trend — tightened padding, larger chart ── */}
+        <div className="card flex flex-col">
+          <div className="mb-3">
             <h3 className="font-display font-semibold text-ix-text">Engagement Trend</h3>
             <p className="text-xs text-ix-muted mt-0.5">6-week engagement &amp; retention</p>
           </div>
- 
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.22)' }}>
-              <p className="text-2xl font-display font-bold mb-0.5" style={{ color: '#8b5cf6' }}>
+
+          {/* Stat pills — compact row */}
+          <div className="grid grid-cols-2 gap-2.5 mb-3">
+            <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.22)' }}>
+              <p className="text-xl font-display font-bold leading-none mb-1" style={{ color: '#8b5cf6' }}>
                 {latestEngage}
                 <span className="text-xs font-mono font-normal ml-1.5" style={{
                   color: latestEngage >= prevEngage ? '#10b981' : '#ef4444',
@@ -214,9 +220,9 @@ function AdminDashboard() {
               </p>
               <p className="text-[11px] text-ix-muted">Engagement score</p>
             </div>
- 
-            <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(6,182,212,0.10)', border: '1px solid rgba(6,182,212,0.22)' }}>
-              <p className="text-2xl font-display font-bold mb-0.5" style={{ color: '#06b6d4' }}>
+
+            <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(6,182,212,0.10)', border: '1px solid rgba(6,182,212,0.22)' }}>
+              <p className="text-xl font-display font-bold leading-none mb-1" style={{ color: '#06b6d4' }}>
                 {latestRetain}%
                 <span className="text-xs font-mono font-normal ml-1.5" style={{
                   color: latestRetain >= prevRetain ? '#10b981' : '#ef4444',
@@ -227,8 +233,9 @@ function AdminDashboard() {
               <p className="text-[11px] text-ix-muted">Retention rate</p>
             </div>
           </div>
- 
-          <div className="flex items-center gap-4 mb-4">
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 mb-2">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#8b5cf6' }} />
               <span className="text-[10px] font-mono text-ix-muted">Engagement</span>
@@ -238,15 +245,18 @@ function AdminDashboard() {
               <span className="text-[10px] font-mono text-ix-muted">Retention</span>
             </div>
           </div>
- 
-          <GradientAreaChart
-            data={engageFallback}
-            lines={[
-              { key: 'Engagement', color: '#8b5cf6', label: 'Engagement' },
-              { key: 'Retention',  color: '#06b6d4', label: 'Retention' },
-            ]}
-            height={150}
-          />
+
+          {/* Chart — flex-1 so it fills all remaining card space */}
+          <div className="flex-1 min-h-0">
+            <GradientAreaChart
+              data={engageFallback}
+              lines={[
+                { key: 'Engagement', color: '#8b5cf6', label: 'Engagement' },
+                { key: 'Retention',  color: '#06b6d4', label: 'Retention' },
+              ]}
+              height={210}
+            />
+          </div>
         </div>
 
         {/* AI Insights */}
