@@ -34,35 +34,35 @@ Try the live deployment — no setup required. Use the demo accounts below or cr
 
 ### Landing Page
 
-![Landing Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Landing_Page.png)
+![Landing Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Landing Page.png)
 
 ### Admin Dashboard
 
-![Admin Dashboard](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Admin_Dashboard.png)
+![Admin Dashboard](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Admin Dashboard.png)
 
 ### Admin Profile
 
-![Admin Profile](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Admin_Profile.png)
+![Admin Profile](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Admin Profile.png)
 
 ### Contributors Page
 
-![Contributors Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Contributors_Page.png)
+![Contributors Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Contributors Page.png)
 
 ### Contributor Dashboard
 
-![Contributor Dashboard](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Contributor_Dashboard.png)
+![Contributor Dashboard](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Contributor Dashboard.png)
 
 ### Contributor Profile
 
-![Contributor Profile](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Contributor_Profile.png)
+![Contributor Profile](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Contributor Profile.png)
 
 ### Tasks Page
 
-![Tasks Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Tasks_Page.png)
+![Tasks Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/Tasks Page.png)
 
 ### My Tasks Page
 
-![My Tasks Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/My_Tasks_Page.png)
+![My Tasks Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/My Tasks Page.png)
 
 ### Leaderboard
 
@@ -70,7 +70,7 @@ Try the live deployment — no setup required. Use the demo accounts below or cr
 
 ### AI Reports Page
 
-![AI Reports Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/AI_Reports_Page.png)
+![AI Reports Page](https://github.com/nirnit-13/InsightX/raw/main/Screenshots/AI Reports Page.png)
 
 ---
 
